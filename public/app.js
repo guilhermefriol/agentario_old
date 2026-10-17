@@ -464,9 +464,10 @@ setInterval(() => {
 setInterval(() => { if (snap) drawPane(); }, 15000);
 
 // ---------- loop ----------
-let last = performance.now(), cw = 0, ch = 0, acc = 0;
+let last = null, cw = 0, ch = 0, acc = 0;
 function frame(t) {
   requestAnimationFrame(frame);
+  if (last === null) last = t; // o relógio dos quadros começa no 1º quadro (independe do carregamento)
   const dt = Math.min(0.1, (t - last) / 1000);
   last = t;
   acc += dt;

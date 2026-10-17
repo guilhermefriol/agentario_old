@@ -37,16 +37,19 @@ function tryPlace(items, C, R) {
   const placed = [{ cc: true, cx: ccx, cy: ccy, sx: 1, sy: 1 }];
   for (const it of items) {
     let best = null;
-    for (let cy = 0; cy + it.sy <= R; cy++) for (let cx = 0; cx + it.sx <= C; cx++) {
-      if (!free(occ, cx, cy, it.sx, it.sy)) continue;
-      // a ala das salas paradas mira a borda sul; o resto, o centro do prédio
-      const d = it.ala ? Math.abs(cx + it.sx / 2 - C / 2) + Math.abs(cy + it.sy - R)
-        : Math.abs(cx + it.sx / 2 - C / 2) + Math.abs(cy + it.sy / 2 - R / 2);
-      if (!best || d < best.d - 1e-9) best = { cx, cy, d };
+    // a ala pode assumir vários formatos (mais larga e baixa etc.); fica o que encaixar melhor
+    for (const [sx, sy] of it.shapes || [[it.sx, it.sy]]) {
+      for (let cy = 0; cy + sy <= R; cy++) for (let cx = 0; cx + sx <= C; cx++) {
+        if (!free(occ, cx, cy, sx, sy)) continue;
+        // a ala das salas paradas mira a borda sul; o resto, o centro do prédio
+        const d = it.ala ? Math.abs(cx + sx / 2 - C / 2) + Math.abs(cy + sy - R) + Math.abs(sx - sy) * 0.3
+          : Math.abs(cx + sx / 2 - C / 2) + Math.abs(cy + sy / 2 - R / 2);
+        if (!best || d < best.d - 1e-9) best = { cx, cy, d, sx, sy };
+      }
     }
     if (!best) return null;
-    mark(occ, best.cx, best.cy, it.sx, it.sy);
-    placed.push({ ...it, cx: best.cx, cy: best.cy });
+    mark(occ, best.cx, best.cy, best.sx, best.sy);
+    placed.push({ ...it, cx: best.cx, cy: best.cy, sx: best.sx, sy: best.sy });
   }
   return placed;
 }
@@ -61,15 +64,17 @@ export function planBuilding(rooms, caps) {
   const quiet = items.filter((i) => i.room.kind === 'project' && !i.room.staff?.length && i.sx === 1 && i.sy === 1);
   if (quiet.length >= 2) {
     for (const q of quiet) items.splice(items.indexOf(q), 1);
-    const bw = Math.ceil(Math.sqrt(quiet.length)), bh = Math.ceil(quiet.length / bw);
-    items.push({ ala: quiet.map((q) => q.room), sx: bw, sy: bh });
+    const n = quiet.length, shapes = [];
+    for (let h = 1; h <= n; h++) { const w = Math.ceil(n / h); if (w * h - n < w && w <= 12) shapes.push([w, h]); }
+    shapes.sort((a, b) => Math.abs(a[0] - a[1]) - Math.abs(b[0] - b[1]));
+    items.push({ ala: quiet.map((q) => q.room), sx: shapes[0][0], sy: shapes[0][1], shapes });
   }
   // salas de lazer por último: o tryPlace as põe mais longe do centro (tende à periferia)
   for (const L of LEISURE) items.push({ room: { id: L.id, name: L.name, kind: 'leisure', full: !!L.fullName }, sx: L.span[0], sy: L.span[1], leisure: L.kind });
   const N = items.reduce((s, i) => s + i.sx * i.sy, 0) + 1;
   // procura a grade mais compacta (e mais quadrada) em que tudo cabe
   let placed = null, C = 0, R = 0, bestScore = Infinity;
-  const maxSpan = Math.max(2, ...items.map((i) => Math.max(i.sx, i.sy)));
+  const maxSpan = Math.max(2, ...items.map((i) => (i.shapes ? Math.min(...i.shapes.map((sh) => Math.max(...sh))) : Math.max(i.sx, i.sy))));
   for (let c = Math.max(4, maxSpan); c <= 24; c++) {
     for (let r = Math.max(4, Math.ceil(N / c)); r <= Math.ceil(N / c) + 3; r++) {
       const score = c * PW + r * PH + Math.abs(c - r) * 4; // no isométrico o tamanho na tela depende de largura + altura
