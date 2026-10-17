@@ -316,3 +316,24 @@ test('demoSnapshot: veredito só muda quando uma auditoria da cena termina', () 
   }
   assert.equal(changes, 0, 'veredito trocou sem auditoria no meio');
 });
+
+// ---------- v6: ala das salas paradas ----------
+test('salas sem agente formam um bloco só, conectado, na ala sul', () => {
+  const quiet = 'abcdefghij'.split('').map((x) => project('q' + x, 0));
+  for (const n of [2, 3, 5, 7, 10]) {
+    const P = planBuilding([lobby, project('Grande', 12), project('Media', 4), ...quiet.slice(0, n)], new Map());
+    const cells = P.rooms.filter((r) => r.room.id.startsWith('q')).map((r) => [r.cx, r.cy]);
+    assert.equal(cells.length, n);
+    const key = (c) => c.join(','), set = new Set(cells.map(key)), seen = new Set([key(cells[0])]), q = [cells[0]];
+    while (q.length) {
+      const [x, y] = q.shift();
+      for (const nb of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) if (set.has(key(nb)) && !seen.has(key(nb))) { seen.add(key(nb)); q.push(nb); }
+    }
+    assert.equal(seen.size, n, `${n} salas: um componente só`);
+    // nenhuma outra sala dentro do retângulo da ala
+    const xs = cells.map((c) => c[0]), ys = cells.map((c) => c[1]);
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    for (const r of [...P.rooms, ...P.leisure]) if (!r.room.id.startsWith('q'))
+      assert.ok(r.cx > x1 || r.cx + r.sx - 1 < x0 || r.cy > y1 || r.cy + r.sy - 1 < y0, `${r.room.name} invadiu a ala`);
+  }
+});

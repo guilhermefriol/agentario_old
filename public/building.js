@@ -39,7 +39,9 @@ function tryPlace(items, C, R) {
     let best = null;
     for (let cy = 0; cy + it.sy <= R; cy++) for (let cx = 0; cx + it.sx <= C; cx++) {
       if (!free(occ, cx, cy, it.sx, it.sy)) continue;
-      const d = Math.abs(cx + it.sx / 2 - C / 2) + Math.abs(cy + it.sy / 2 - R / 2);
+      // a ala das salas paradas mira a borda sul; o resto, o centro do prédio
+      const d = it.ala ? Math.abs(cx + it.sx / 2 - C / 2) + Math.abs(cy + it.sy - R)
+        : Math.abs(cx + it.sx / 2 - C / 2) + Math.abs(cy + it.sy / 2 - R / 2);
       if (!best || d < best.d - 1e-9) best = { cx, cy, d };
     }
     if (!best) return null;
@@ -55,6 +57,13 @@ export function planBuilding(rooms, caps) {
     const [sx, sy] = spanFor(Math.max(caps.get(r.id) || 0, seatsNeeded(r)));
     return { room: r, sx, sy };
   }).sort((a, b) => (b.sx * b.sy - a.sx * a.sy) || a.room.name.localeCompare(b.room.name, 'pt'));
+  // salas de projeto sem agente cadastrado e de 1 célula vão juntas para uma ala (um retângulo só)
+  const quiet = items.filter((i) => i.room.kind === 'project' && !i.room.staff?.length && i.sx === 1 && i.sy === 1);
+  if (quiet.length >= 2) {
+    for (const q of quiet) items.splice(items.indexOf(q), 1);
+    const bw = Math.ceil(Math.sqrt(quiet.length)), bh = Math.ceil(quiet.length / bw);
+    items.push({ ala: quiet.map((q) => q.room), sx: bw, sy: bh });
+  }
   // salas de lazer por último: o tryPlace as põe mais longe do centro (tende à periferia)
   for (const L of LEISURE) items.push({ room: { id: L.id, name: L.name, kind: 'leisure', full: !!L.fullName }, sx: L.span[0], sy: L.span[1], leisure: L.kind });
   const N = items.reduce((s, i) => s + i.sx * i.sy, 0) + 1;
@@ -69,7 +78,15 @@ export function planBuilding(rooms, caps) {
       if (res) { placed = res; C = c; R = r; bestScore = score; }
     }
   }
-  const rects = placed.map((p) => ({ ...p, room: p.cc ? lobby : p.room }));
+  const rects = [];
+  for (const p of placed) {
+    if (!p.ala) { rects.push({ ...p, room: p.cc ? lobby : p.room }); continue; }
+    // divide a ala em células em serpentina (linhas cheias + resto encostado): sempre conectada
+    p.ala.forEach((room, i) => {
+      const row = Math.floor(i / p.sx), col = row % 2 ? p.sx - 1 - (i % p.sx) : i % p.sx;
+      rects.push({ room, cx: p.cx + col, cy: p.cy + row, sx: 1, sy: 1, quiet: true });
+    });
+  }
 
   // malha de corredores: nós nos cruzamentos entre células
   const blockedNode = (i, j) => rects.some((r) => i > r.cx && i < r.cx + r.sx && j > r.cy && j < r.cy + r.sy);

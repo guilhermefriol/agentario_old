@@ -35,10 +35,14 @@ const lg = lo.getContext('2d');
 const es = new EventSource('/api/stream');
 es.onmessage = (ev) => { try { onSnapshot(JSON.parse(ev.data)); } catch {} };
 
-const prevStates = new Map();
-const feed = [];
-// cada linha lembra se nasceu no modo demonstração, para sair do letreiro quando o modo desliga
-const pushFeed = (text, room) => { feed.unshift({ at: Date.now(), text, room, demo: demoOn }); if (feed.length > 24) feed.pop(); };
+// dois letreiros independentes: o real (sempre comparado com o snapshot real, mesmo com a demonstração
+// ligada) e o da demonstração (comparado com a cena, zerado a cada vez que liga). A tela mostra um ou outro.
+const newFeed = () => ({ list: [], prev: new Map() });
+const feeds = { real: newFeed(), demo: newFeed() };
+const feedOf = () => (demoOn ? feeds.demo : feeds.real);
+const pushTo = (F, text, room) => { F.list.unshift({ at: Date.now(), text, room }); if (F.list.length > 24) F.list.pop(); };
+// o centro de comando não leva nome na tela (pedido do dono)
+const roomLabel = (r) => (r?.kind === 'lobby' ? '' : r?.name || '');
 const who = (key, fallback) => office.names.get(key) || fallback;
 
 function onSnapshot(s) {
@@ -48,7 +52,9 @@ function onSnapshot(s) {
   if (!firstTime) { refresh(); return; }
   shown = demoOn ? demoSnapshot(snap, Date.now()) : null;
   office.sync(view());
-  seedFeed(view());
+  seedStates(feeds.real, snap);
+  pushTo(feeds.real, 'painel ligado. Bom trabalho, equipe!', null);
+  if (demoOn) { seedStates(feeds.demo, shown); pushTo(feeds.demo, 'modo demonstração ligado', null); }
   camera.fit(true);
   renderPanels();
 }
@@ -61,7 +67,8 @@ function refresh() {
   if (!snap) return;
   shown = demoOn ? demoSnapshot(snap, Date.now()) : null;
   office.sync(view());
-  diffFeed(view());
+  diffFeed(feeds.real, snap);
+  if (demoOn) diffFeed(feeds.demo, shown);
   camera.keepFocus();
   renderPanels();
 }
@@ -71,11 +78,8 @@ function setDemo(on) {
   if (snap) {
     shown = on ? demoSnapshot(snap, Date.now()) : null;
     office.sync(view());
-    // letreiro: sai o que era da demonstração; estados recarregados sem gerar enxurrada
-    if (!on) for (let i = feed.length - 1; i >= 0; i--) if (feed[i].demo) feed.splice(i, 1);
-    prevStates.clear();
-    seedStates(view());
-    pushFeed(on ? 'modo demonstração ligado' : 'modo demonstração desligado', null);
+    // letreiro da demonstração começa do zero, sem enxurrada; o real segue intacto
+    if (on) { feeds.demo = newFeed(); seedStates(feeds.demo, shown); pushTo(feeds.demo, 'modo demonstração ligado', null); }
     renderPanels();
   }
   const logo = $('logo');
@@ -87,58 +91,54 @@ function setDemo(on) {
 $('logo').addEventListener('click', () => setDemo(!demoOn));
 setInterval(() => { if (demoOn) refresh(); }, 5000);
 
-function seedStates(s) {
+function seedStates(F, s) {
   for (const r of s.rooms) {
-    for (const x of r.sessions) prevStates.set('s:' + x.key, x.state + x.activity);
-    for (const a of r.staff) prevStates.set('a:' + r.id + ':' + a.name, a.state);
-    if (r.auditor) prevStates.set('c:' + r.id, r.auditor.state + (r.auditor.verdictAt || ''));
+    for (const x of r.sessions) F.prev.set('s:' + x.key, x.state + x.activity);
+    for (const a of r.staff) F.prev.set('a:' + r.id + ':' + a.name, a.state);
+    if (r.auditor) F.prev.set('c:' + r.id, r.auditor.state + (r.auditor.verdictAt || ''));
   }
-}
-function seedFeed(s) {
-  seedStates(s);
-  pushFeed('painel ligado. Bom trabalho, equipe!', null);
 }
 
 const VERDICT_TXT = { aprovado: 'aprovou', revisar: 'pediu revisão', bloqueado: 'bloqueou', 'sem veredito': 'terminou a auditoria' };
-function diffFeed(s) {
+function diffFeed(F, s) {
   const seen = new Set();
   for (const r of s.rooms) {
     for (const x of r.sessions) {
       const k = 's:' + x.key;
       seen.add(k);
-      const before = prevStates.get(k);
+      const before = F.prev.get(k);
       const now = x.state + x.activity;
       const name = who(k, 'Claude');
-      if (before === undefined) pushFeed(`${name} (Claude) chegou`, r.name);
+      if (before === undefined) pushTo(F, `${name} (Claude) chegou`, roomLabel(r));
       else if (before !== now) {
-        if (x.state === 'asking') pushFeed(`${name} tem uma pergunta pra você`, r.name);
-        else if (x.state === 'waiting') pushFeed(`${name} aguarda sua ação`, r.name);
-        else if (x.state === 'free' && !before.startsWith('free')) pushFeed(`${name} terminou a vez`, r.name);
-        else if (x.state === 'working' && !before.startsWith('working')) pushFeed(`${name} voltou ao trabalho: ${x.activity}`, r.name);
-        else if (x.state === 'stuck') pushFeed(`${name} está sem progresso há um tempo`, r.name);
+        if (x.state === 'asking') pushTo(F, `${name} tem uma pergunta pra você`, roomLabel(r));
+        else if (x.state === 'waiting') pushTo(F, `${name} aguarda sua ação`, roomLabel(r));
+        else if (x.state === 'free' && !before.startsWith('free')) pushTo(F, `${name} terminou a vez`, roomLabel(r));
+        else if (x.state === 'working' && !before.startsWith('working')) pushTo(F, `${name} voltou ao trabalho: ${x.activity}`, roomLabel(r));
+        else if (x.state === 'stuck') pushTo(F, `${name} está sem progresso há um tempo`, roomLabel(r));
       }
-      prevStates.set(k, now);
+      F.prev.set(k, now);
     }
     for (const st of r.staff) {
       const k = 'a:' + r.id + ':' + st.name;
       seen.add(k);
-      const before = prevStates.get(k);
+      const before = F.prev.get(k);
       const name = who(k, st.name);
-      if (before !== undefined && before !== st.state) pushFeed(st.state === 'working' ? `${name} (${st.name}) começou: ${st.activity}` : `${name} (${st.name}) entregou`, r.name);
-      prevStates.set(k, st.state);
+      if (before !== undefined && before !== st.state) pushTo(F, st.state === 'working' ? `${name} (${st.name}) começou: ${st.activity}` : `${name} (${st.name}) entregou`, roomLabel(r));
+      F.prev.set(k, st.state);
     }
     if (r.auditor) {
       const k = 'c:' + r.id;
       const now = r.auditor.state + (r.auditor.verdictAt || '');
-      const before = prevStates.get(k);
+      const before = F.prev.get(k);
       if (before !== undefined && before !== now) {
-        if (r.auditor.state === 'auditando') pushFeed('o fiscal Codex chegou para auditar', r.name);
-        else if (r.auditor.verdict) pushFeed(`o fiscal Codex ${VERDICT_TXT[r.auditor.verdict] || 'terminou'} o plano`, r.name);
+        if (r.auditor.state === 'auditando') pushTo(F, 'o fiscal Codex chegou para auditar', roomLabel(r));
+        else if (r.auditor.verdict) pushTo(F, `o fiscal Codex ${VERDICT_TXT[r.auditor.verdict] || 'terminou'} o plano`, roomLabel(r));
       }
-      prevStates.set(k, now);
+      F.prev.set(k, now);
     }
   }
-  for (const k of [...prevStates.keys()]) if (k.startsWith('s:') && !seen.has(k)) { prevStates.delete(k); pushFeed(`${who(k, 'uma sessão')} encerrou o expediente`, null); }
+  for (const k of [...F.prev.keys()]) if (k.startsWith('s:') && !seen.has(k)) { F.prev.delete(k); pushTo(F, `${who(k, 'uma sessão')} encerrou o expediente`, null); }
 }
 
 // ---------- painéis ----------
@@ -168,7 +168,7 @@ function renderPanels() {
   $('alerts').replaceChildren(...(v.alerts.length
     ? v.alerts.slice(0, 4).map((a) => h('li', { class: `alert t-${a.type}` },
         h('span', { class: 'ico' }, ICO[a.type] || '!'),
-        h('div', {}, h('div', { class: 'what' }, a.text), h('div', { class: 'where' }, a.room)),
+        h('div', {}, h('div', { class: 'what' }, a.text), h('div', { class: 'where' }, roomLabel(v.rooms.find((r) => r.id === a.roomId)) || (a.roomId ? '' : a.room))),
         h('span', { class: 'age' }, ago(a.since))))
     : [h('p', { class: 'calm' }, h('b', {}, 'Tudo fluindo. '), 'Nenhum agente está esperando por você.')]));
   if (v.alerts.length > 4) $('alerts').append(h('p', { class: 'calm' }, `+${v.alerts.length - 4} alertas`));
@@ -210,7 +210,7 @@ function paneNow() {
       tasks = h('div', { class: 'counts' }, h('span', {}, h('b', {}, c.andamento || 0), ' em andamento'), h('span', {}, h('b', {}, c.aguardando || 0), ' aguardando'), h('span', {}, h('b', {}, c.concluida || 0), ' concluídas'));
     } else tasks = h('div', { class: 'hidden-note' }, 'tarefas desta sala são privadas');
     const ctx = r.sessions.map((s) => (s.contextPct !== null && s.contextPct !== undefined ? `${s.contextPct}% de contexto` : null)).filter(Boolean)[0];
-    return h('div', { class: 'room-block' }, h('div', { class: 'room-head' }, h('h3', {}, r.name), h('span', { class: 'meta' }, ctx || '')), h('div', { class: 'people' }, people), tasks);
+    return h('div', { class: 'room-block' }, h('div', { class: 'room-head' }, h('h3', {}, roomLabel(r)), h('span', { class: 'meta' }, ctx || '')), h('div', { class: 'people' }, people), tasks);
   });
 }
 
@@ -220,9 +220,9 @@ function paneToday() {
   const now = new Date().getHours();
   const max = Math.max(1, ...rooms.flatMap((r) => r.hours));
   const heat = h('div', { class: 'heat' }, h('span', {}), ...Array.from({ length: 24 }, (_, i) => h('span', { class: 'h' }, i % 6 === 0 ? String(i) : '')),
-    ...rooms.flatMap((r) => [h('span', { class: 'lbl' }, r.name), ...r.hours.map((v, i) => h('span', { class: 'c' + (i === now ? ' now' : ''), style: { background: v ? `rgba(255,181,71,${0.18 + (v / max) * 0.82})` : '#1f2646' } }))]));
+    ...rooms.flatMap((r) => [h('span', { class: 'lbl' }, roomLabel(r)), ...r.hours.map((v, i) => h('span', { class: 'c' + (i === now ? ' now' : ''), style: { background: v ? `rgba(255,181,71,${0.18 + (v / max) * 0.82})` : '#1f2646' } }))]));
   const maxMin = Math.max(1, ...rooms.map((r) => r.stats.activeMinutes));
-  const stats = h('div', { class: 'stats' }, rooms.map((r) => h('div', { class: 'stat-row' }, h('span', { class: 'lbl' }, r.name),
+  const stats = h('div', { class: 'stats' }, rooms.map((r) => h('div', { class: 'stat-row' }, h('span', { class: 'lbl' }, roomLabel(r)),
     h('span', { class: 'bar' }, h('i', { style: { width: `${(r.stats.activeMinutes / maxMin) * 100}%` } })), h('span', { class: 'val' }, `${r.stats.activeMinutes} min`))));
   const audits = snap.rooms.reduce((n, r) => n + (r.auditor?.today || 0), 0);
   return [h('h2', {}, 'Atividade por hora'), heat, h('h2', { style: { 'margin-top': '1.1rem' } }, 'Minutos ativos'), stats,
@@ -243,6 +243,7 @@ function paneTeam() {
 
 function drawTicker() {
   const el = $('ticker');
+  const feed = feedOf().list;
   const key = feed.slice(0, 12).map((f) => f.at + f.text).join();
   if (el.dataset.k === key) return;
   el.dataset.k = key;
@@ -320,7 +321,7 @@ function roomTip(lr) {
     lr.cc ? ['Visitando o Friol', lr.present || 0] : null,
     r.auditor?.verdict ? ['Codex', `${r.auditor.verdict} · ${since(r.auditor.verdictAt)}`] : null,
   ].filter(Boolean);
-  return [h('div', { class: 'tip-name' }, r.name), h('div', { class: 'tip-role' }, lr.cc ? 'centro de comando' : 'sala do projeto'), h('dl', {}, rows.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, String(v))]))];
+  return [h('div', { class: 'tip-name' }, lr.cc ? 'Mesa do Friol' : r.name), h('div', { class: 'tip-role' }, lr.cc ? 'onde o Friol trabalha' : 'sala do projeto'), h('dl', {}, rows.flatMap(([k, v]) => [h('dt', {}, k), h('dd', {}, String(v))]))];
 }
 
 // ---------- câmera ----------
@@ -491,4 +492,4 @@ requestAnimationFrame(frame);
 $('view-tag').textContent = VIEW_TAG;
 if (demoOn) setDemo(true);
 // gancho de depuração só leitura, para testes automatizados (?debug=1)
-if (params.get('debug') === '1') window.__pr = { office, camera, view, real: () => snap, feed, screenOf: (key) => { const e = office.entities.get(key); if (!e) return null; const [sx, sy] = office.P.p(e.x, e.y, 0); const [x, y] = camera.toScreen(sx - office.bbox[0], sy - office.bbox[1]); return [x / (window.devicePixelRatio || 1), y / (window.devicePixelRatio || 1)]; } };
+if (params.get('debug') === '1') window.__pr = { office, camera, view, real: () => snap, feeds, feedOf, screenOf: (key) => { const e = office.entities.get(key); if (!e) return null; const [sx, sy] = office.P.p(e.x, e.y, 0); const [x, y] = camera.toScreen(sx - office.bbox[0], sy - office.bbox[1]); return [x / (window.devicePixelRatio || 1), y / (window.devicePixelRatio || 1)]; } };
