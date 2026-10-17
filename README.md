@@ -20,6 +20,9 @@ npm test             # testes de vazamento, não-escrita, servidor e unidades
 
 Não há dependências para instalar. Precisa de Node 22 ou mais novo.
 
+Na máquina do dono o painel real sobe sozinho pelo launchd (`com.friol.agentario`); para reiniciar depois
+de mudar o código: `launchctl kickstart -k gui/$UID/com.friol.agentario`.
+
 ### Mouse e câmera
 
 Sozinha, a câmera alterna entre a visão do prédio inteiro e um zoom em cada sala acesa, dando prioridade às

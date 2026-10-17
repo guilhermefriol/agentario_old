@@ -4,23 +4,15 @@ Painel de TV **só-leitura** que mostra os projetos, agentes e skills de `~/.cla
 isométrico em pixel art. Autor: Guilherme Friol. Visual escolhido pelo dono: **isométrico**.
 Repositório: **github.com/guilhermefriol/agentario (privado)**, branch `main`.
 
-## ▶ Próximo passo pendente (parte 2 do docs/PLANO-v6.md) — fazer ao abrir a sessão na pasta nova
-O dono renomeia a pasta à mão (o hook `projects-guard` proíbe o Claude de mover pastas de projeto):
-`~/.claude/projects/pixel_room` → `~/.claude/projects/agentario`. Depois, nesta pasta nova:
-1. Parar o servidor antigo se ainda vivo (`lsof -nP -iTCP:4747 -sTCP:LISTEN`; era `node bin/agentario.mjs`
-   iniciado à mão na pasta antiga).
-2. `config/local.json`: copiar para `config/local.json.pre-v6`, trocar a chave da sala `pixel_room` → `agentario`.
-3. launchd do usuário (sem sudo): `mkdir -p ~/Library/Logs/agentario`; conferir `/opt/homebrew/bin/node -v`;
-   gerar `~/Library/LaunchAgents/com.friol.agentario.plist` (Label `com.friol.agentario`, ProgramArguments
-   `[/opt/homebrew/bin/node, <pasta>/bin/agentario.mjs]`, WorkingDirectory = pasta, RunAtLoad, KeepAlive,
-   ThrottleInterval 10, logs `~/Library/Logs/agentario/{out,err}.log`, PATH mínimo); `plutil -lint`;
-   `launchctl bootstrap gui/$UID <plist>`.
-4. Validar: `launchctl print gui/$UID/com.friol.agentario`, `lsof` mostra só `127.0.0.1:4747`, `curl` 200,
-   `kill` no processo → volta sozinho. Não tocar nos outros `com.friol.*`.
-5. Atualizar este arquivo (remover esta seção, registrar o estado) + commit + push.
-Rollback: `launchctl bootout gui/$UID/com.friol.agentario`; `rm -f` do plist; restaurar `local.json.pre-v6`.
-**Autorizado pelo dono em 2026-10-17** (fora de `~/.claude`): `~/Library/LaunchAgents/com.friol.agentario.plist`
-e `~/Library/Logs/agentario/`.
+## Início automático (launchd, v6 parte 2 — aplicada em 2026-10-17)
+O servidor real roda como agente launchd do usuário `com.friol.agentario`
+(`~/Library/LaunchAgents/com.friol.agentario.plist`: node `/opt/homebrew/bin/node`, RunAtLoad, KeepAlive,
+ThrottleInterval 10, logs em `~/Library/Logs/agentario/{out,err}.log`). Validado: só `127.0.0.1:4747`,
+HTTP 200, volta sozinho após `kill`. **Não iniciar com `npm start` à mão** (conflito na porta 4747).
+- Reiniciar após mudar código: `launchctl kickstart -k gui/$UID/com.friol.agentario`
+- Rollback: `launchctl bootout gui/$UID/com.friol.agentario`; `rm -f` do plist; restaurar
+  `config/local.json.pre-v6` (a sala `pixel_room` virou `agentario` no `config/local.json`).
+- Autorizados pelo dono (fora de `~/.claude`): esse plist e `~/Library/Logs/agentario/`.
 
 ## Depois: v7 (3D) e v8 (interação) — cada um com plano + Codex + aprovação
 - **v7 — 3D**: decisão do dono = **modo extra com botão** (isométrico continua padrão; `?view=3d`), Three.js
