@@ -1,4 +1,4 @@
-# Pixel Room — contexto do projeto
+# Agentário — contexto do projeto (antigo Pixel Room)
 
 Painel de TV **só-leitura** que mostra os projetos, agentes e skills de `~/.claude` como um prédio
 isométrico em pixel art. Autor: Guilherme Friol. Visual escolhido pelo dono: **isométrico**.
@@ -18,7 +18,7 @@ isométrico em pixel art. Autor: Guilherme Friol. Visual escolhido pelo dono: **
   Só frontend (`public/leisure.js` puro + building/office/app); snapshot não muda. Backup da v3 em `docs/v3-backup/`.
 - v3 aplicada (docs/PLANO-v3.md + pareceres codex-parecer-v3*): cartão do agente mostra "Faz:" e
   clique na sala dá zoom (botão Visão geral / Esc / duplo clique voltam). Backup da v2 em `docs/v2-backup/`.
-- v2 implementada e rodando em `http://127.0.0.1:4747/` (processo `node bin/pixel_room.mjs`, iniciado em background).
+- v2 implementada e rodando em `http://127.0.0.1:4747/` (hoje `node bin/agentario.mjs`).
 - 62 testes passando (`npm test`). Demo fictícia: `npm run demo` (porta 4748).
 - Planos e pareceres do Codex em `docs/` (PLANO.md = v1, PLANO-v2.md = prédio + adendo do fiscal Codex).
   Cópia da v1 em `docs/v1-backup/`.
@@ -57,5 +57,5 @@ isométrico em pixel art. Autor: Guilherme Friol. Visual escolhido pelo dono: **
 - `public/demo.js` modo demonstração (transforma o snapshot no navegador; puro, testado)
 - `public/leisure.js` salas de lazer: móveis, lugares, escolha de visitantes, reservas, rastro (puro, testado no node)
 - `public/building.js` planta do prédio e corredores · `public/office.js` motor · `public/app.js` câmera, mouse, painéis
-- `bin/pixel_room.mjs` entrada · `bin/demo.mjs` demo · `test/` node --test
+- `bin/agentario.mjs` entrada · `bin/demo.mjs` demo · `test/` node --test
 - Testes visuais: `?debug=1` expõe `window.__pr` (só leitura) para screenshots via DevTools.

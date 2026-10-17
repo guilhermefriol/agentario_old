@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-export function makeRoots(claudeDir = process.env.PIXEL_ROOM_CLAUDE_DIR || path.join(os.homedir(), '.claude')) {
+export function makeRoots(claudeDir = process.env.AGENTARIO_CLAUDE_DIR || path.join(os.homedir(), '.claude')) {
   const base = fs.realpathSync(claudeDir);
   const raw = path.resolve(claudeDir);
   return {

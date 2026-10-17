@@ -1,4 +1,4 @@
-// ÚNICO módulo que escreve em disco, e só dentro de pixel_room/config/.
+// ÚNICO módulo que escreve em disco, e só dentro de agentario/config/.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,7 +29,7 @@ function writeOwn(file, data) {
   fs.renameSync(tmp, target);
 }
 
-export function configFile(name = process.env.PIXEL_ROOM_CONFIG || 'local') {
+export function configFile(name = process.env.AGENTARIO_CONFIG || 'local') {
   return path.join(CONFIG_DIR, path.basename(String(name)).replace(/[^\w-]/g, '') + '.json');
 }
 

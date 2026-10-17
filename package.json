@@ -1,5 +1,5 @@
 {
-  "name": "pixel_room",
+  "name": "agentario",
   "version": "0.1.0",
   "private": true,
   "description": "Painel de TV só-leitura: escritório pixel art dos agentes Claude Code",
@@ -8,11 +8,11 @@
     "node": ">=22"
   },
   "scripts": {
-    "start": "node bin/pixel_room.mjs",
+    "start": "node bin/agentario.mjs",
     "test": "node --test test/*.test.mjs",
     "demo": "node bin/demo.mjs",
     "visual": "playwright test -c test/visual/playwright.config.mjs",
-    "visual:update": "playwright test -c test/visual/playwright.config.mjs --update-snapshots"
+    "visual:update": "playwright test -c test/visual/playwright.config.mjs --update-snapshots=all"
   },
   "author": "Guilherme Friol",
   "license": "UNLICENSED",

@@ -1,4 +1,4 @@
-# Pixel Room
+# Agentário
 
 Painel de TV que mostra seus agentes do Claude Code como funcionários de um prédio em pixel art isométrico.
 Cada projeto é uma sala, trabalhando ou não: com trabalho a sala acende, parada ela fica apagada. Corredores
@@ -12,7 +12,7 @@ estagiários vindos do centro de comando, e as revisões do Codex aparecem como 
 ## Rodar
 
 ```bash
-cd ~/.claude/projects/pixel_room
+cd ~/.claude/projects/agentario
 npm start            # painel real em http://127.0.0.1:4747/
 npm run demo         # escritório fictício em http://127.0.0.1:4748/ (não lê seus dados)
 npm test             # testes de vazamento, não-escrita, servidor e unidades
@@ -105,7 +105,7 @@ uma pergunta pendente de verdade no transcript.
 ## Estrutura
 
 ```
-bin/pixel_room.mjs   ponto de entrada
+bin/agentario.mjs    ponto de entrada
 bin/demo.mjs         escritório fictício para demonstração
 src/                 coletor, filtro, snapshot e servidor (Node puro)
 public/              página, planta do prédio, motor gráfico e sprites (Canvas 2D)

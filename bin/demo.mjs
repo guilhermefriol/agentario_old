@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const base = fs.mkdtempSync(path.join(os.tmpdir(), 'pixel-room-demo-'));
+const base = fs.mkdtempSync(path.join(os.tmpdir(), 'agentario-demo-'));
 const P = path.join(base, 'projects');
 const projects = {
   atlas: { display: 'Atlas', tasks: 'publico', agents: ['planner', 'backend-dev', 'frontend-dev', 'qa', 'reviewer', 'devops'] },
@@ -106,8 +106,8 @@ setInterval(() => {
   });
 }, 2500);
 
-const child = spawn(process.execPath, [path.join(ROOT, 'bin', 'pixel_room.mjs')], {
-  stdio: 'inherit', env: { ...process.env, PIXEL_ROOM_CLAUDE_DIR: base, PIXEL_ROOM_CONFIG: 'demo' },
+const child = spawn(process.execPath, [path.join(ROOT, 'bin', 'agentario.mjs')], {
+  stdio: 'inherit', env: { ...process.env, AGENTARIO_CLAUDE_DIR: base, AGENTARIO_CONFIG: 'demo' },
 });
 const stop = () => { child.kill(); fs.rmSync(base, { recursive: true, force: true }); process.exit(0); };
 process.on('SIGINT', stop); process.on('SIGTERM', stop);

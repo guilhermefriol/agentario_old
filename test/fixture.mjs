@@ -26,7 +26,7 @@ export const ROLE_TAIL = 'SEGUNDAFRASEAGENTE';
 export const ROLE_DESC = `Use para revisar ${ROLE_WORD} avisando joao@empresa.com.br no 10.0.0.5 em /srv/cliente. ${ROLE_TAIL} senha: hunter2`;
 
 export function buildFixture({ alivePid = process.pid } = {}) {
-  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'pixel-room-fx-'));
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'agentario-fx-'));
   const projects = path.join(base, 'projects');
   const proj = path.join(projects, SECRETS.folder);
   fs.mkdirSync(path.join(proj, '.claude', 'agents'), { recursive: true });
