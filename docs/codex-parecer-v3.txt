@@ -1,0 +1,60 @@
+
+test('nome real da pasta aparece só com showRealNames', () => {
+  assert.ok(JSON.stringify(run('oculto', null, true).snap).includes(SECRETS.folder));
+  assert.ok(!JSON.stringify(run('oculto', null, false).snap).includes(SECRETS.folder));
+});
+
+test('hidden e exclude removem a sala do snapshot e do catálogo', () => {
+  const fx = buildFixture();
+  for (const variant of ['hidden', 'exclude']) {
+    const cfg = cfgWith('publico', 'Escondida', true);
+    if (variant === 'hidden') cfg.rooms[SECRETS.folder].hidden = true;
+    else cfg.exclude = ['sigiloso'];
+    const col = new Collector(makeRoots(fx.base), cfg);
+    col.tick();
+    const json = JSON.stringify(buildSnapshot(col, cfg));
+    assert.ok(!json.includes('Escondida') && !json.includes(SECRETS.folder), variant);
+    assert.ok(!json.includes('Visitantes'), `${variant}: sessão vazou para Visitantes`);
+  }
+});
+
+test('sala só acende com trabalho efetivo', () => {
+  const { snap } = run('oculto', 'X');
+
+codex
+**Bloqueadores**
+- Fechar a decisão sobre `tasks: oculto` e obter aprovação do dono para a nova saída de texto, conforme `CLAUDE.md`. Aplicar a política tanto em `staff[].does` quanto em `catalog.agents[].does`.
+- Redigir **antes** de extrair a primeira frase. Cortar primeiro pode fragmentar e-mail/IP/host e impedir sua identificação pelo `redact()`. Testar esses casos.
+
+**Riscos**
+- `redact()` não remove nomes de clientes nem hosts arbitrários; 120 caracteres e primeira frase limitam tamanho, não garantem confidencialidade.
+- O loop atual chama `camera.fit()` em resize e mudança das dimensões do prédio. Isso desfaz o enquadramento mesmo com `focused`; prever recomposição por ID quando a planta mudar.
+- Medir apenas deslocamento final permite arrastar e voltar ao ponto inicial virar clique. Usar deslocamento máximo em pixels CSS, botão esquerdo e soltura dentro do canvas.
+- Screenshot isolado não comprova comportamento: validar foco além de 90 s, atualização de snapshot, sala removida, resize, arrasto e duplo clique.
+
+**Simplificações**
+- Centralizar a saída do foco em `overview()` e preservar `?tour=0`.
+- Manter o parser restrito, rejeitando explicitamente marcadores de bloco, inclusive `|-` e `>-`.
+- Incluir `CLAUDE.md` na lista de backup/rollback.
+
+**Veredito:** **revisar**.
+hook: Stop
+hook: Stop Completed
+tokens used
+36.837
+**Bloqueadores**
+- Fechar a decisão sobre `tasks: oculto` e obter aprovação do dono para a nova saída de texto, conforme `CLAUDE.md`. Aplicar a política tanto em `staff[].does` quanto em `catalog.agents[].does`.
+- Redigir **antes** de extrair a primeira frase. Cortar primeiro pode fragmentar e-mail/IP/host e impedir sua identificação pelo `redact()`. Testar esses casos.
+
+**Riscos**
+- `redact()` não remove nomes de clientes nem hosts arbitrários; 120 caracteres e primeira frase limitam tamanho, não garantem confidencialidade.
+- O loop atual chama `camera.fit()` em resize e mudança das dimensões do prédio. Isso desfaz o enquadramento mesmo com `focused`; prever recomposição por ID quando a planta mudar.
+- Medir apenas deslocamento final permite arrastar e voltar ao ponto inicial virar clique. Usar deslocamento máximo em pixels CSS, botão esquerdo e soltura dentro do canvas.
+- Screenshot isolado não comprova comportamento: validar foco além de 90 s, atualização de snapshot, sala removida, resize, arrasto e duplo clique.
+
+**Simplificações**
+- Centralizar a saída do foco em `overview()` e preservar `?tour=0`.
+- Manter o parser restrito, rejeitando explicitamente marcadores de bloco, inclusive `|-` e `>-`.
+- Incluir `CLAUDE.md` na lista de backup/rollback.
+
+**Veredito:** **revisar**.

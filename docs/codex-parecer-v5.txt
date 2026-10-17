@@ -1,0 +1,17 @@
+**Bloqueadores**
+- O centro ainda depende de mesas em `office.sync`. Removê-las exige posições explícitas para Deus, Codex e ocupantes reais, incluindo `staff` e estagiários.
+- As visitas precisam integrar o centro às reservas, retorno, remoção e replanta: hoje esses fluxos procuram destinos apenas em `plan.leisure`.
+- “Todo mundo visita” não é atendido: atualmente só `staff` ocioso participa do lazer.
+
+**Riscos**
+- `caps` guarda a maior ocupação observada: entidades fictícias podem ampliar salas e manter a planta ampliada após desligar. Definir restauração e testar alternâncias.
+- Mudanças de estado a cada 20 s podem interromper visitas de 25 s. Definir precedência e medir retorno considerando o deslocamento; `< 60 s` pode ser inviável nas salas distantes.
+- A amostragem não garante um `working` por sala se o único Claude virar `asking`. Tampouco garante lazer cheio.
+- O botão precisa de foco visível, `aria-pressed` e nome descritivo. A indicação de demonstração deve continuar visível na TV.
+
+**Simplificações**
+- Usar ocupação fictícia estável e variar apenas atividades/estados, evitando replanta entre janelas.
+- Compartilhar o contrato de destinos (`spots`, móveis, reservas), preservando o centro como sala própria.
+- Testar isolamento do snapshot com congelamento profundo, desligamento durante visitas e amostragem definida de desempenho.
+
+**Veredito: revisar.** A proposta é viável, mas faltam fechar o contrato do centro e o ciclo de ativação/desativação.

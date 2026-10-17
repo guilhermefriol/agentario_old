@@ -1,0 +1,4 @@
+- **Bloqueadores:** nenhum no plano revisado; a decisão do dono resolve a aprovação da nova exposição.
+- **Riscos:** `redact()` não garante remover nomes de clientes ou todo hostname. Valor inválido virar `publico` pode expor tarefas por erro de configuração. Simular temporizadores não comprova sozinho a persistência real por 90 s.
+- **Simplificações:** manter o parser limitado a descrições de uma linha e centralizar o retorno em `overview()`. Acrescentar testes de regressão para `interno`, `oculto`, `hidden`/`exclude` e `?tour=0`.
+- **Veredito:** **aprovar**, com esses ajustes de validação. Nenhum arquivo editado.

@@ -1,0 +1,12 @@
+node_modules/
+# config é por máquina (lista real de projetos); só a demo fictícia vai para o git
+config/*.json
+!config/demo.json
+config/*.pre-*
+config/*.tmp
+docs/v*-backup/
+logs/
+*.log
+.DS_Store
+test-results/
+playwright-report/

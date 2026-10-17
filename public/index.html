@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Pixel Room</title>
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+</head>
+<body>
+<div class="tv">
+  <header class="top">
+    <div class="brand">
+      <button class="logo" id="logo" type="button" aria-label="Modo demonstração" aria-pressed="false"></button>
+      <div>
+        <h1>Pixel Room</h1>
+        <p class="sub" id="sub">escritório dos agentes · só visualização</p>
+      </div>
+    </div>
+    <ul class="kpis" id="kpis"></ul>
+    <div class="clock">
+      <div id="clock-time">--:--</div>
+      <div id="clock-date" class="date"></div>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="office" id="office">
+      <canvas id="screen"></canvas>
+      <button class="back" id="back" type="button" hidden></button>
+      <div class="view-tag" id="view-tag"></div>
+      <div class="tip" id="tip" hidden></div>
+      <div class="signal" id="signal" hidden>sem sinal do coletor</div>
+    </section>
+
+    <aside class="side">
+      <section class="card alerts" id="alerts-card">
+        <h2><span class="dot"></span><span id="alerts-title">Precisa de você</span></h2>
+        <ol id="alerts"></ol>
+      </section>
+      <section class="card rotor">
+        <nav class="tabs" id="tabs"></nav>
+        <div class="pane" id="pane"></div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="ticker">
+    <span class="ticker-label">agora</span>
+    <div class="ticker-track"><div class="ticker-items" id="ticker"></div></div>
+  </footer>
+</div>
+<div class="night-veil" id="veil"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>

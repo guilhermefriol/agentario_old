@@ -1,0 +1,19 @@
+**Bloqueadores**
+
+- Falta baseline anterior a A. O primeiro commit depois de C não permite reverter A–C. Criar backup verificável e commit inicial saneado antes das alterações.
+- Mirar a borda sul não garante contiguidade. Reservar espaço para o grupo e testar **um único componente conectado**; “cada sala encosta em outra” aceita blocos separados.
+- Rollback E incompleto: precisa restaurar a chave `pixel_room` no config e reiniciar o servidor anterior. Se `bootout` falhar, o `&&` também impede remover o plist.
+
+**Riscos**
+
+- Rename incompleto: `bin/demo.mjs:109` referencia o executável antigo; `src/paths.mjs` e a demo usam variáveis `PIXEL_ROOM_*`. Incluir esses contratos na migração.
+- Allowlist por arquivo deixa todos os segredos desses testes invisíveis ao scanner. Restringir também aos valores fictícios conhecidos.
+- `/api/stream` usa SSE: definir eventos, formato e reconexões no mock; responder JSON comum não reproduz o contrato. [Playwright](https://playwright.dev/docs/api/class-route#route-fulfill).
+- Criar diretório de logs antes do bootstrap, verificar o Node instalado e confirmar o bind pelo socket; HTTP 200 local não prova exclusividade em loopback.
+
+**Simplificações**
+
+- Fazer commits por etapa e deixar criação/push do GitHub para depois da validação local.
+- Fixar lockfile, viewport, escala e fontes; aprovar imagens manualmente antes de adotá-las como referência.
+
+**Veredito: revisar.**

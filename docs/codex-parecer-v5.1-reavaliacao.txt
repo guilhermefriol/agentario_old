@@ -1,0 +1,7 @@
+**Bloqueadores:** nenhum; a revisão resolve os pontos do parecer anterior.
+
+**Riscos:** testar explicitamente a remoção das mensagens demonstrativas ao desligar e a ausência de enxurrada no clique e no primeiro SSE seguinte.
+
+**Simplificações:** consolidar a revisão no corpo do plano, removendo as regras antigas conflitantes sobre Hoje, alertas e testes.
+
+**Veredito: aprovar** o plano revisado.

@@ -1,0 +1,134 @@
+OpenAI Codex v0.162.1
+--------
+workdir: /private/tmp/claude-501/-Users-guilherme--claude-projects/c06bcb8a-1b84-4725-a4f1-27afd12e621c/scratchpad
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a14a88-52f5-7c63-9ec9-78623cc22fcb
+--------
+user
+# Plano: "Escritório" — painel de TV só-leitura dos agentes Claude Code
+
+## Objetivo
+Painel web para ficar rodando numa TV de escritório: escritório 2D estilo pixel art (salas = projetos,
+funcionários = agentes/sessões), mais faixas de informação acionável (alertas, tarefas, atividade).
+Estritamente só visual: nenhum controle, nenhuma escrita em ~/.claude, nenhum hook.
+Futuro (fora deste escopo): renderer 3D e interação com agentes.
+
+## Fontes de dados (todas leitura, via fs.watch + polling)
+- ~/.claude/sessions/*.json -> sessões vivas: pid, sessionId, cwd, name, status (busy/idle), updatedAt.
+- ~/.claude/projects/*/*.jsonl e */subagents/*.jsonl -> último tool_use (só o NOME da ferramenta),
+  timestamps, isSidechain, subagentes, tarefas (TodoWrite/TaskCreate/TaskUpdate), uso de tokens.
+- ~/.claude/skills/*/SKILL.md e <projeto>/.claude/skills -> só o campo name do frontmatter.
+- <projeto>/.claude/agents/*.md -> só name e model do frontmatter.
+- Lista de projetos: pastas reais em ~/.claude/projects, filtrando dirs temporários (-private-*, tmp, BKP/arquivo via config).
+- Nunca ler: *.key, settings*.json, .env*, history.jsonl, paste-cache, file-history, session-env.
+
+## Arquitetura
+1. Coletor (Node 22+, sem dependências pesadas): parser incremental de JSONL (lê só bytes novos por offset).
+2. Sanitizador por ALLOWLIST: produz um snapshot com campos fixos e tipados. Nunca repassa prompt,
+   tool input (comandos, paths, URLs), tool output, thinking, conteúdo de arquivo. Ferramenta vira
+   categoria: editando / lendo / rodando comando / pesquisando web / delegando subagente / aguardando você.
+   Títulos de tarefas (decisão do dono: política configurável por projeto) passam por: limite de tamanho, regex de redação (e-mail, CPF/CNPJ, IP, tokens,
+   URLs, paths) e política por projeto (publico | interno | oculto) num config local.
+3. Servidor HTTP: só GET (snapshot JSON + Server-Sent Events). Sem endpoint de escrita. Bind fixo em
+   127.0.0.1 (decisão do dono: TV via HDMI direto no Mac; sem modo LAN nesta versão). Checagem de Host
+   header contra DNS rebinding. CSP estrito, sem CDN, sem telemetria, assets self-hosted.
+4. Front (Vite + PixiJS 2D): camada de render separada do modelo de dados (contrato = snapshot).
+   Decisão do dono: construir DOIS renderers sobre o mesmo snapshot, para ele escolher:
+   (a) 2D pixel top-down; (b) 2D isométrico. Troca por query string (?view=topdown|iso).
+   O mesmo contrato permite um renderer Three.js no futuro sem mexer no coletor.
+
+## O que a TV mostra
+- Escritório: uma sala por projeto ativo nas últimas 24h; agentes cadastrados sentados nas mesas;
+  quem está em sessão ativa se levanta/digita/lê; subagente = estagiário que entra e sai; balão
+  "esperando você" quando a sessão aguarda permissão/input.
+- Faixa de alertas (acionável): sessão aguardando você há > N min; sessão com erros repetidos de
+  ferramenta; sessão "busy" parada há muito tempo (possível travamento); contexto perto do limite.
+- Quadro de tarefas: tarefas abertas/em andamento/concluídas por projeto (respeitando a política).
+- Linha do tempo do dia + placar (sessões, horas ativas, tokens por projeto).
+- Mural de catálogo rotativo: todos os projetos, skills e agentes cadastrados.
+- Modo TV: fonte grande, rotação automática de vistas, dimming noturno, reconexão automática.
+
+## Local do código
+~/.claude/projects/escritorio/ (dentro do escopo permitido). Projeto próprio e isolado.
+
+## Fases
+F0 coletor + sanitizador + testes de vazamento (fixtures com segredos falsos: nenhum pode aparecer no snapshot).
+F1 servidor só-GET + os dois renderers básicos (top-down e isométrico) para o dono escolher.
+F2 alertas, tarefas, timeline, catálogo.
+F3 modo TV e (com aprovação à parte) launchd user agent para subir sozinho.
+
+## Riscos
+- Vazamento de dado de cliente na TV (LGPD): mitigado por allowlist, redação, política por projeto e testes.
+- Formato do JSONL é interno e muda entre versões do Claude Code: parser tolerante, campos desconhecidos ignorados.
+- Licença dos assets: pixel-agents é MIT, mas sprites incluídos podem vir de packs de terceiros; verificar
+  antes de reusar, senão usar packs CC0 ou desenhar os próprios.
+- Exposição na rede: só localhost; DNS rebinding mitigado por checagem de Host.
+- Dois renderers dobram o custo do front: compartilhar modelo, animação e layout de salas; só a projeção e os sprites mudam.
+- Custo de CPU com 100+ transcripts: leitura incremental por offset, ignora arquivos sem mudança.
+
+## Validação
+Testes unitários do sanitizador; teste de vazamento com fixtures; teste de que o servidor rejeita
+POST/PUT/DELETE; verificação de que nada em ~/.claude é modificado (mtime/hash antes e depois);
+screenshot em 1920x1080 e 3840x2160.
+
+## Rollback
+Projeto autocontido: parar o processo e apagar a pasta. Nenhuma mudança em settings, hooks ou outros projetos.
+
+---
+Pedido ao revisor: parecer curto no formato **Bloqueadores / Riscos / Simplificações / Veredito (aprovar · revisar · bloquear)**.
+Não abra arquivos do host nem rode comandos; avalie só o texto deste plano.
+
+hook: SessionStart
+hook: SessionStart Completed
+codex
+**Bloqueadores**
+
+- Falta definir como detectar “aguardando você”, erros repetidos e limite de contexto. `busy/idle` e último nome de ferramenta não bastam. Sem evidência confiável, mostrar “desconhecido” e não disparar alerta.
+- Política de tarefas precisa nascer com padrão **oculto**, inclusive para projetos novos. Regex reduz risco, mas não impede exposição de nomes de clientes ou dados comerciais.
+- A validação “nada em `~/.claude` é modificado” conflita com o código dentro dessa árvore e com escritas simultâneas do Claude Code. Delimitar a pasta própria e verificar que o painel não escreve nas fontes monitoradas.
+
+**Riscos**
+
+- Nomes de projetos, sessões, agentes e skills também podem revelar clientes. A allowlist precisa de aliases de exibição e limites para esses campos.
+- Parser incremental deve tratar linhas incompletas, truncamento, rotação, arquivos grandes e reinício. Evitar seguir symlinks para fora das raízes autorizadas.
+- Tokens e horas ativas podem sofrer dupla contagem entre sessões e subagentes. Exibir como estimativas até definir deduplicação.
+- Só GET não garante proteção: validar `Host` estritamente, restringir `Origin` quando presente, não habilitar CORS amplo e evitar cache dos snapshots.
+
+**Simplificações**
+
+- Compartilhar layout, animações e sprites; variar inicialmente apenas a projeção dos dois renderers.
+- Começar sem persistência: reconstruir estado ao iniciar e limitar o histórico à janela necessária.
+- No F0, incluir testes de parser e falha segura: dados inválidos ou desconhecidos nunca ampliam o snapshot.
+- Usar sprites próprios simples na F1, eliminando a investigação de licenças nessa etapa.
+
+**Veredito: revisar.** Arquitetura coerente com o objetivo; resolver os três bloqueadores antes de implementar.
+hook: Stop
+hook: Stop Completed
+tokens used
+8.430
+**Bloqueadores**
+
+- Falta definir como detectar “aguardando você”, erros repetidos e limite de contexto. `busy/idle` e último nome de ferramenta não bastam. Sem evidência confiável, mostrar “desconhecido” e não disparar alerta.
+- Política de tarefas precisa nascer com padrão **oculto**, inclusive para projetos novos. Regex reduz risco, mas não impede exposição de nomes de clientes ou dados comerciais.
+- A validação “nada em `~/.claude` é modificado” conflita com o código dentro dessa árvore e com escritas simultâneas do Claude Code. Delimitar a pasta própria e verificar que o painel não escreve nas fontes monitoradas.
+
+**Riscos**
+
+- Nomes de projetos, sessões, agentes e skills também podem revelar clientes. A allowlist precisa de aliases de exibição e limites para esses campos.
+- Parser incremental deve tratar linhas incompletas, truncamento, rotação, arquivos grandes e reinício. Evitar seguir symlinks para fora das raízes autorizadas.
+- Tokens e horas ativas podem sofrer dupla contagem entre sessões e subagentes. Exibir como estimativas até definir deduplicação.
+- Só GET não garante proteção: validar `Host` estritamente, restringir `Origin` quando presente, não habilitar CORS amplo e evitar cache dos snapshots.
+
+**Simplificações**
+
+- Compartilhar layout, animações e sprites; variar inicialmente apenas a projeção dos dois renderers.
+- Começar sem persistência: reconstruir estado ao iniciar e limitar o histórico à janela necessária.
+- No F0, incluir testes de parser e falha segura: dados inválidos ou desconhecidos nunca ampliam o snapshot.
+- Usar sprites próprios simples na F1, eliminando a investigação de licenças nessa etapa.
+
+**Veredito: revisar.** Arquitetura coerente com o objetivo; resolver os três bloqueadores antes de implementar.

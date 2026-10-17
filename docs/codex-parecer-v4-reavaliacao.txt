@@ -1,0 +1,7 @@
+**Bloqueadores:** remoção durante a ida, antes de alcançar `doorOut` do lazer, não pode seguir o rastro inverso até esse ponto. Definir saída pela porta da sala onde está ou desaparecimento se já estiver no corredor. Definir também precedência entre remoção do projeto e teleporte da replanta, pois a mesa pode deixar de existir.
+
+**Riscos:** contar apenas os escolhidos permite ultrapassar 35% enquanto outros voltam. Recalcular elegíveis durante o slot pode trocar visitantes continuamente. Fixar seleção por slot e contabilizar todos os agentes fora da mesa.
+
+**Simplificações:** a revisão substitui `e.where` por `e.away`; remover a regra antiga. Acrescentar testes das remoções nas três fases e da troca de slot com retornos pendentes.
+
+**Veredito: revisar.** A revisão resolve os principais problemas de trajeto, reservas e testabilidade; faltam fechar essas transições.

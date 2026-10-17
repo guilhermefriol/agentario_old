@@ -1,0 +1,7 @@
+**Bloqueadores:** nenhum no plano revisado.
+
+**Riscos:** restaurar `caps` guardadas ao ligar pode ignorar snapshots reais recebidos durante a demonstração; recalcular pelo real mais recente. A fila “sem limite” precisa evitar sobreposição com portas, rotas e visitantes no centro 1×1.
+
+**Simplificações:** manter uma única rotina de cálculo de capacidades e replanta para os dois modos; fixar navegador e hardware de referência para o limite de 8 ms.
+
+**Veredito:** **aprovar**, incorporando esses cuidados na implementação.

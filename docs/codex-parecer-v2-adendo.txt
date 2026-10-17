@@ -1,0 +1,63 @@
+OpenAI Codex v0.162.1
+--------
+workdir: /private/tmp/claude-501/-Users-guilherme--claude-projects/c06bcb8a-1b84-4725-a4f1-27afd12e621c/scratchpad/gate
+model: gpt-6.1-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: medium
+reasoning summaries: none
+session id: 01a14aba-ece7-75b3-ab67-58b4b4004643
+--------
+user
+## Adendo: fiscal Codex (pedido do dono durante a implementação)
+Objetivo: representar as revisões do Codex (o gate de planos) como um personagem fiscal/auditor.
+
+Detecção, no coletor, só em memória:
+- tool_use `Bash` cujo `input.command` (string) case com /(^|[\s;&|(])(\S*\/)?codex\s+exec\b/ marca aquela
+  chamada como auditoria. O comando NÃO é guardado; só o booleano e o timestamp.
+- O tool_result dessa chamada é lido apenas para extrair um enum de veredito pela regex
+  /veredito\W{0,30}(aprovar|aprovado|revisar|bloquear|bloqueado)/i → aprovado | revisar | bloqueado;
+  sem match = "sem veredito". O texto do resultado não é guardado.
+- Chamadas em background (resultado imediato sem veredito) contam como "sem veredito".
+
+Snapshot, por sala: `auditor = { state: 'auditando' | 'livre', verdict: enum | null, verdictAt: ts | null,
+today: número }`. Nenhuma string livre. Alerta novo `codex` quando o último veredito da sala é
+"bloqueado" há menos de 30 min ("Codex bloqueou um plano").
+
+Visual: fiscal de uniforme azul-marinho, quepe e prancheta, com posto no centro de comando. Ao auditar,
+caminha pelo corredor até a sala e fica ao lado da mesa do Claude com lupa; ao sair o veredito, carimbo
+(✓ verde / ! âmbar / ✕ coral) e volta ao centro. Tooltip com estado, último veredito e auditorias do dia.
+
+Testes: fixture com comando `codex exec` contendo segredo plantado e resultado com segredo + "Veredito:
+bloquear"; snapshot deve ter verdict = bloqueado, alerta codex, e nenhum dos segredos; sala sem codex não
+tem `auditor` ativo.
+
+---
+Contexto: painel de TV local, só-leitura (servidor só GET em 127.0.0.1); o snapshot é montado por allowlist e hoje
+nunca usa input nem output de ferramentas. Este adendo passa a LER comando e resultado de uma ferramenta só para
+derivar um booleano e um enum. Avalie se isso é seguro.
+Pedido ao revisor: parecer curto no formato **Bloqueadores / Riscos / Simplificações / Veredito (aprovar · revisar · bloquear)**.
+Não abra arquivos do host nem rode comandos; avalie só o texto.
+
+hook: SessionStart
+hook: SessionStart Completed
+codex
+**Bloqueadores:** nenhum no desenho descrito. Ler transitoriamente comando e resultado para derivar booleano e enum é compatível com o isolamento proposto.
+
+**Riscos:** garantir que comando e resultado não vazem por logs, exceções, caches ou telemetria. Correlacionar `tool_result` pelo ID da chamada e pela sessão/sala, evitando atribuição incorreta. O veredito é uma indicação visual extraída de texto e pode ser falsificado por esse texto; não deve autorizar ações. Limitar o volume processado para evitar consumo excessivo de memória.
+
+**Simplificações:** manter uma única função de classificação com retorno fechado; usar `null` para ausência de auditoria e enum explícito para “sem veredito”. Acrescentar testes de resultado sem match, background, correlação entre salas e expiração do alerta.
+
+**Veredito: aprovar**, preservando a allowlist e o descarte dos textos brutos.
+hook: Stop
+hook: Stop Completed
+tokens used
+8.284
+**Bloqueadores:** nenhum no desenho descrito. Ler transitoriamente comando e resultado para derivar booleano e enum é compatível com o isolamento proposto.
+
+**Riscos:** garantir que comando e resultado não vazem por logs, exceções, caches ou telemetria. Correlacionar `tool_result` pelo ID da chamada e pela sessão/sala, evitando atribuição incorreta. O veredito é uma indicação visual extraída de texto e pode ser falsificado por esse texto; não deve autorizar ações. Limitar o volume processado para evitar consumo excessivo de memória.
+
+**Simplificações:** manter uma única função de classificação com retorno fechado; usar `null` para ausência de auditoria e enum explícito para “sem veredito”. Acrescentar testes de resultado sem match, background, correlação entre salas e expiração do alerta.
+
+**Veredito: aprovar**, preservando a allowlist e o descarte dos textos brutos.

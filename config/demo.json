@@ -1,0 +1,167 @@
+{
+  "port": 4748,
+  "lobbyName": "Saguão",
+  "lobbyTasks": "publico",
+  "contextWindows": {
+    "claude-demo": 200000
+  },
+  "rotateSeconds": 20,
+  "rooms": {
+    "atlas": {
+      "alias": "Sala 1",
+      "display": "Atlas",
+      "tasks": "publico",
+      "hidden": false
+    },
+    "orion": {
+      "alias": "Sala 2",
+      "display": "Orion",
+      "tasks": "interno",
+      "hidden": false
+    },
+    "lumen": {
+      "alias": "Sala 3",
+      "display": "Lumen",
+      "tasks": "publico",
+      "hidden": false
+    },
+    "vega": {
+      "alias": "Sala 4",
+      "display": "Vega",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "aurora": {
+      "alias": "Sala 5",
+      "display": "Aurora",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "boreal": {
+      "alias": "Sala 6",
+      "display": "Boreal",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "cometa": {
+      "alias": "Sala 7",
+      "display": "Cometa",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "delta": {
+      "alias": "Sala 8",
+      "display": "Delta",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "eclipse": {
+      "alias": "Sala 9",
+      "display": "Eclipse",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "fenix": {
+      "alias": "Sala 10",
+      "display": "Fenix",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "galaxia": {
+      "alias": "Sala 11",
+      "display": "Galaxia",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "hidra": {
+      "alias": "Sala 12",
+      "display": "Hidra",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "iris": {
+      "alias": "Sala 13",
+      "display": "Iris",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "jupiter": {
+      "alias": "Sala 14",
+      "display": "Jupiter",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "kepler": {
+      "alias": "Sala 15",
+      "display": "Kepler",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "lince": {
+      "alias": "Sala 16",
+      "display": "Lince",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "mercurio": {
+      "alias": "Sala 17",
+      "display": "Mercurio",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "nebula": {
+      "alias": "Sala 18",
+      "display": "Nebula",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "olimpo": {
+      "alias": "Sala 19",
+      "display": "Olimpo",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "pulsar": {
+      "alias": "Sala 20",
+      "display": "Pulsar",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "quasar": {
+      "alias": "Sala 21",
+      "display": "Quasar",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "rigel": {
+      "alias": "Sala 22",
+      "display": "Rigel",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "saturno": {
+      "alias": "Sala 23",
+      "display": "Saturno",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "titan": {
+      "alias": "Sala 24",
+      "display": "Titan",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "urano": {
+      "alias": "Sala 25",
+      "display": "Urano",
+      "tasks": "oculto",
+      "hidden": false
+    },
+    "zenite": {
+      "alias": "Sala 26",
+      "display": "Zenite",
+      "tasks": "oculto",
+      "hidden": false
+    }
+  }
+}

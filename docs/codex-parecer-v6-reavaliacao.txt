@@ -1,0 +1,11 @@
+**Bloqueadores:** `config/local.json.pre-v6` fica fora do `.gitignore` proposto e pode entrar no commit E com o catálogo real. Ignorar explicitamente antes de criá-lo.
+
+**Riscos:**
+
+- A allowlist precisa implementar **caminho E valor**, com marcadores fictícios bem delimitados; testar também token inesperado no mesmo arquivo.
+- Retângulo conectado não garante salas conectadas se houver células sobrando: preencher em ordem contígua e executar BFS nas células efetivamente ocupadas.
+- Rollback ao baseline pode deixar dependências incompatíveis; incluir `npm ci` antes de subir a versão antiga.
+
+**Simplificações:** Manter o baseline como único ponto de restauração de código, dispensando backups de código em `docs/`. Separar explicitamente a entrega A–C da retomada E após a renomeação manual.
+
+**Veredito: revisar.** A revisão resolve os problemas principais; falta fechar a exclusão do backup local e explicitar as verificações acima.

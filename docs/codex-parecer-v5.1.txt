@@ -1,0 +1,14 @@
+**Bloqueadores**
+- Hoje via `view()` soma `auditor.today` fictício; contradiz “histórico igual ao real”. Usar o snapshot real nessa aba.
+- Lobby/externas preservam `asking`/`waiting` reais. Gerar alertas apenas para sessões transformadas quebra `waitingYou = alertas asking`; definir tratamento dessas salas.
+
+**Riscos**
+- Letreiro pode manter mensagens demonstrativas após desligar; definir limpeza e executar o diff também no timer.
+- “Os 4 números mudam” é teste frágil: alguns podem coincidir. Comparar com valores esperados.
+- `docs/v5-backup/` ainda não existe; criar antes das alterações.
+
+**Simplificações**
+- Centralizar sincronização: calcular cena → atualizar prédio → tratar letreiro → renderizar painéis. Reutilizar em SSE, clique e timer.
+- Testar também `?demo=1`, salas vazias e sessões em lobby/externas.
+
+**Veredito: revisar.**

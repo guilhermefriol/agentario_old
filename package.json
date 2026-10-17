@@ -1,0 +1,17 @@
+{
+  "name": "pixel_room",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Painel de TV s\u00f3-leitura: escrit\u00f3rio pixel art dos agentes Claude Code",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node bin/pixel_room.mjs",
+    "test": "node --test test/*.test.mjs",
+    "demo": "node bin/demo.mjs"
+  },
+  "author": "Guilherme Friol",
+  "license": "UNLICENSED"
+}

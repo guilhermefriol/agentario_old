@@ -1,0 +1,20 @@
+**Bloqueadores**
+
+- `e.where = 'corridor'` não basta para recalcular a volta: definir retorno desde a posição atual quando chegar trabalho **durante a ida**, sem atravessar paredes nem reiniciar pela porta.
+- No `sync()` atual, remover o projeto apaga imediatamente suas entidades. O plano precisa preservar quem está no lazer para executar a saída e liberar reservas.
+- `inRoom()` usa corredores entre mesas (`cols`, `laneX`). Salas com móveis próprios precisam de caminhos internos compatíveis.
+
+**Riscos**
+
+- Replanta: deslocar pela sala funciona dentro dela; no corredor, pode colocar o agente dentro de paredes. Definir reposicionamento seguro e reconstrução das reservas.
+- Janela de 40% não garante teto de 35%. Especificar limite, arredondamento para equipes pequenas e prioridade determinística.
+- Reservar ao iniciar a ida; liberar em cancelamento, retorno, remoção e replanta. Contar ocupantes presentes separadamente das reservas.
+- Colocar por último favorece periferia, mas não a garante.
+
+**Simplificações**
+
+- Manter `e.state` do snapshot; representar lazer em campo visual separado.
+- Testar automaticamente interrupção no trajeto, disputa, remoção e replanta. Verificar segmentos transitáveis, além do destino final da rota.
+- Trocar “sem piora relevante” por limite mensurável; retirar o restart do rollback, já que a mudança é estática.
+
+**Veredito: revisar.** Escopo adequado; faltam regras completas para interrupções, replanta e ciclo das reservas.
