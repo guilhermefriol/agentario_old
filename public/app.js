@@ -493,7 +493,8 @@ function viewUI() {
 function drop3d() {
   if (!v3) return;
   v3.dispose(); v3 = null; v3Plan = '';
-  cw = 0; // o próximo quadro reenquadra a câmera 2D
+  // o 2D recomeça do zero: canvas e camada estática refeitos e câmera reenquadrada no próximo quadro
+  cw = 0; lo.width = 0; office.staticKey = '';
 }
 async function setView3d(on) {
   const my = ++viewToken;

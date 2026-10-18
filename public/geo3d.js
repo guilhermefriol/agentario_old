@@ -116,7 +116,7 @@ export class Collector {
 
 // ---------- câmera orbital ----------
 // o mundo (x, y, altura) vira (X = x, Y = altura, Z = y); a câmera fica no quadrante +x +y, como no isométrico
-export const AZ0 = Math.PI / 4, EL0 = Math.PI / 6;
+export const AZ0 = Math.PI / 4, EL0 = (36 * Math.PI) / 180;
 export const AZ_MIN = (10 * Math.PI) / 180, AZ_MAX = (80 * Math.PI) / 180;
 export const EL_MIN = (20 * Math.PI) / 180, EL_MAX = (65 * Math.PI) / 180;
 export const SPIN = (20 * Math.PI) / 180, SPIN_MS = 120_000;

@@ -12,6 +12,8 @@ THREE.ColorManagement.enabled = false; // cores do 2D passam direto, sem convers
 const WORKING = new Set(['working', 'asking', 'waiting', 'stuck']);
 const FOV = 30;
 const MAX_ROOMS = 128;
+// no 3D não há o brilho aditivo do 2D: salas apagadas e noite escurecem menos, e tudo ganha um pouco de luz
+const DARK_3D = 0.55, GAIN = 1.15, NIGHT_3D = 0.18;
 const UNIT_2D = 1 / PXW; // px do isométrico por unidade do mundo (perpendicular à vista) com zoom 1
 
 const VERT = `
@@ -28,9 +30,10 @@ void main() {
     vec4 R = uRoom[r]; // x = escuridão, y = paredes rebaixadas, z = luz
     if (R.y > 0.5 && aMeta.y > 0.5) p.y = min(p.y, ${(2.5 * ZS).toFixed(6)});
     c.rgb = mix(c.rgb, vec3(6.0, 8.0, 22.0) / 255.0, R.x);
-    c.rgb += vec3(1.0, 0.84, 0.59) * 0.05 * R.z;
+    c.rgb += vec3(1.0, 0.84, 0.59) * 0.12 * R.z;
   }
-  c.rgb = mix(c.rgb, vec3(10.0, 12.0, 40.0) / 255.0, 0.32 * uNight);
+  c.rgb = min(c.rgb * ${GAIN.toFixed(2)}, vec3(1.0));
+  c.rgb = mix(c.rgb, vec3(10.0, 12.0, 40.0) / 255.0, ${NIGHT_3D.toFixed(2)} * uNight);
   vColor = c;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
 }`;
@@ -379,7 +382,7 @@ class View3d {
     this.rooms.forEach((lr, i) => {
       if (i >= MAX_ROOMS) return;
       const light = this.roomLight(lr);
-      const dark = (lr.cc ? 0.25 : 0.62) * (1 - light);
+      const dark = (lr.cc ? 0.25 : 0.62) * (1 - light) * DARK_3D;
       this.dark.set(lr, dark);
       // em foco numa sala: as paredes altas das outras baixam para não tapar a vista
       const cut = this.focusId && lr.room.id !== this.focusId ? 1 : 0;
@@ -441,7 +444,7 @@ class View3d {
 
   updateFigures(t, nightK) {
     const o = this.office, rot = this.facing();
-    const nightMul = 1 - 0.32 * nightK;
+    const nightMul = 1 - NIGHT_3D * nightK;
     for (const e of o.entities.values()) {
       const pose = o.charPose(e, t);
       if (pose.hide) continue;
@@ -454,7 +457,7 @@ class View3d {
       f.mesh.rotation.y = rot;
       f.mesh.renderOrder = 1;
       const home = e.away?.phase === 'lá' ? e.away.lz : e.lr;
-      f.mat.color.setScalar((1 - (this.dark.get(home) || 0)) * nightMul);
+      f.mat.color.setScalar(Math.min(1, (1 - (this.dark.get(home) || 0)) * nightMul * GAIN));
       f.mat.opacity = e.fade > 0 ? clamp(e.fade / 0.6, 0, 1) : 1;
       // balão de atividade (mesma regra do drawBubble)
       if (e.leaving || e.moving || !WORKING.has(e.state)) continue;
@@ -562,8 +565,7 @@ class View3d {
     for (const m of Object.values(this.layers)) m.geometry.dispose();
     if (this.points) this.points.geometry.dispose();
     for (const x of [this.figGeo, this.bubGeo, this.glyphGeo, this.matOp, this.matTr, this.pMat]) x.dispose();
-    this.renderer.dispose();
-    this.renderer.forceContextLoss();
+    this.renderer.dispose(); // sem forceContextLoss: em alguns drivers a perda forçada atrapalha o resto da página
     this.canvas.remove();
   }
 }
