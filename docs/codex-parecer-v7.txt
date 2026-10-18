@@ -1,0 +1,20 @@
+**Bloqueadores**
+
+- Contrato incompleto: explicitar `resize`, giro, unidade de tela (CSS × DPR) e retorno do hit-test com `key/e/lr`, exigidos pelos cartões atuais.
+- `__pr.view()` já retorna o snapshot e é usado no teste de demonstração. Preservá-lo; adicionar `viewMode`.
+- Headless não garante SwiftShader: configurá-lo explicitamente, aguardar a cena pronta e verificar que está em 3D antes da captura. O fallback automático está depreciado no [Chromium](https://github.com/chromium/chromium/blob/main/docs/gpu/swiftshader.md).
+
+**Riscos**
+
+- Faltam descarte de recursos nas reconstruções, tratamento de perda de contexto e proteção contra trocas rápidas durante o `import()`.
+- `__frameMs` atual mede desenho após a simulação; em WebGL não comprova conclusão da GPU. Validar também intervalos entre quadros e estabilidade prolongada em 4K.
+- Paredes fixas “do fundo” podem obstruir ao girar; sprites sobrepostos precisam de prioridade por profundidade no hit-test.
+- `labels` ainda usa larguras isométricas e zoom global: só trocar `project` não adapta sua escala à perspectiva.
+
+**Simplificações**
+
+- Começar com emissivo, ambiente e direcional; adicionar luzes pontuais somente após medir.
+- Manter quantidade fixa de luzes e reutilizar renderer/texturas.
+- Acrescentar testes funcionais de troca, falha de importação/contexto, DPR 2 e atualização da planta; screenshots não cobrem esses estados.
+
+**Veredito: revisar.** Arquitetura viável, mas contrato, ciclo de vida e validação precisam desses ajustes antes da implementação.

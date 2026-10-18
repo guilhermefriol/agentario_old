@@ -45,6 +45,7 @@ const shortRole = (s) => String(s || '').replace(/^[a-z0-9]+-(?=[a-z])/i, '');
 
 // ---------- primitivas ----------
 function poly(g, P, pts, fill) {
+  if (g.poly3) return g.poly3(pts, fill); // coletor do modo 3D (view3d.js): recebe o polígono em coordenadas do mundo
   g.fillStyle = fill;
   g.beginPath();
   for (let i = 0; i < pts.length; i++) { const [sx, sy] = P.p(pts[i][0], pts[i][1], pts[i][2]); i ? g.lineTo(sx, sy) : g.moveTo(sx, sy); }
@@ -55,7 +56,7 @@ function quadZ(g, P, x0, y0, x1, y1, z, fill) { poly(g, P, [[x0, y0, z], [x1, y0
 function box(g, P, x, y, w, d, h, top, front, side, z0 = 0) {
   const z1 = z0 + h;
   poly(g, P, [[x, y + d, z0], [x + w, y + d, z0], [x + w, y + d, z1], [x, y + d, z1]], front);
-  if (P.id === 'iso') poly(g, P, [[x + w, y, z0], [x + w, y + d, z0], [x + w, y + d, z1], [x + w, y, z1]], side);
+  if (P.id !== 'topdown') poly(g, P, [[x + w, y, z0], [x + w, y + d, z0], [x + w, y + d, z1], [x + w, y, z1]], side);
   poly(g, P, [[x, y, z1], [x + w, y, z1], [x + w, y + d, z1], [x, y + d, z1]], top);
 }
 function wallX(g, P, x0, x1, y, z0, z1, fill) { poly(g, P, [[x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1]], fill); }
@@ -489,9 +490,21 @@ export class Office {
     const c = this.static;
     c.width = this.width; c.height = this.height;
     const g = c.getContext('2d');
-    const P = this.P, { BW, BH } = this.plan;
+    const P = this.P;
     g.save();
     g.translate(-this.bbox[0], -this.bbox[1]);
+    this.drawBase(g, P, hour);
+    // áreas de convivência
+    for (const L of this.plan.lounges) this.drawLounge(g, P, L);
+    // salas
+    for (const lr of this.plan.rooms) this.drawRoomShell(g, P, lr);
+    for (const lz of this.plan.leisure) { this.drawRoomShell(g, P, lz); this.drawLeisureWalls(g, P, lz); }
+    g.restore();
+  }
+
+  // laje do andar, cabos dos corredores e paredes externas com janelas (2D e 3D)
+  drawBase(g, P, hour) {
+    const { BW, BH } = this.plan;
     // laje do andar e corredores
     quadZ(g, P, 0, 0, BW, BH, 0, '#262b45');
     g.strokeStyle = 'rgba(255,255,255,0.035)'; g.lineWidth = 1;
@@ -524,12 +537,6 @@ export class Office {
     }
     wallX(g, P, 0, BW, 0, 21, 23, '#4a5185');
     wallY(g, P, 0, BH, 0, 21, 23, '#3d4475');
-    // áreas de convivência
-    for (const L of this.plan.lounges) this.drawLounge(g, P, L);
-    // salas
-    for (const lr of this.plan.rooms) this.drawRoomShell(g, P, lr);
-    for (const lz of this.plan.leisure) { this.drawRoomShell(g, P, lz); this.drawLeisureWalls(g, P, lz); }
-    g.restore();
   }
 
   // decoração de parede das salas de lazer (fica na camada estática)
@@ -606,6 +613,33 @@ export class Office {
     }
   }
 
+  // móveis e pessoas do quadro: { z (profundidade 2D), f (desenha), lr (sala dona), char (pessoa/robô) }
+  sceneItems(g, P, t) {
+    const items = [];
+    const seated = new Map();
+    for (const e of this.entities.values()) if (e.desk && !e.leaving && !e.moving && Math.hypot(e.x - e.seat.x, e.y - e.seat.y) < 0.05) seated.set(e.lr.room.id + ':' + e.desk.x + ':' + e.desk.y, e);
+    for (const lr of this.plan.rooms) {
+      const { ox, oy } = lr;
+      for (const d of lr.desks) {
+        const e = seated.get(lr.room.id + ':' + d.x + ':' + d.y);
+        const x = ox + d.x, y = oy + d.y;
+        items.push({ z: P.depth(x + 1.5, y + 1), f: () => this.drawDesk(g, P, x, y, e, lr, t), lr });
+        items.push({ z: P.depth(x + 1.5, y + 1.75), f: () => box(g, P, x + 1.05, y + 1.55, 0.9, 0.35, e ? 5 : 6, '#3a3550', '#2a2640', '#221f35'), lr });
+      }
+      if (lr.cc) { items.push({ z: P.depth(ox + 1, oy + 1), f: () => this.drawCommand(g, P, lr, t), lr }); continue; }
+      const c = lr.coffee, w = lr.cooler;
+      items.push({ z: P.depth(c.x + 0.5, c.y - 0.4), f: () => { box(g, P, c.x - 0.2, c.y - 1.4, 1.4, 0.8, 9, '#6b6f82', '#4a4d5e', '#3c3f4f'); box(g, P, c.x + 0.1, c.y - 1.3, 0.8, 0.5, 6, '#2a2a30', '#d94a4a', '#a53636', 9); }, lr });
+      items.push({ z: P.depth(w.x + 0.5, w.y - 0.4), f: () => { box(g, P, w.x, w.y - 1.2, 0.9, 0.7, 10, '#e9e6d8', '#c9c6b8', '#a9a698'); box(g, P, w.x + 0.15, w.y - 1.1, 0.6, 0.5, 6, '#9fd8ff', '#6cc6ff', '#4aa0d8', 10); }, lr });
+      const px = ox + lr.W - 1.5, py = oy + lr.H - 1.9;
+      items.push({ z: P.depth(px + 0.5, py + 0.5), f: () => { box(g, P, px, py, 0.9, 0.9, 5, '#8a5a3b', '#6b4430', '#57372a'); box(g, P, px - 0.15, py - 0.15, 1.2, 1.2, 8, '#4fae6a', '#3c8a53', '#2f6e42', 5 + Math.sin(t / 900 + ox) * 0.4); box(g, P, px + 0.15, py + 0.15, 0.6, 0.6, 4, '#6fd08a', '#4fae6a', '#3c8a53', 13); }, lr });
+    }
+    for (const lz of this.destinations) for (const pr of lz.props)
+      items.push({ z: P.depth(pr.x + pr.w / 2, pr.y + pr.d), f: () => box(g, P, pr.x, pr.y, pr.w, pr.d, pr.h, pr.col[0], pr.col[1], pr.col[2], pr.z0), lr: lz });
+    for (const e of this.entities.values()) items.push({ z: P.depth(e.x, e.y) + 0.01, f: () => this.drawChar(g, P, e, t), char: true, e });
+    if (this.robot) { const r = this.robot; items.push({ z: P.depth(r.x, r.y), f: () => this.drawRobot(g, P, r, t), char: true }); }
+    return items;
+  }
+
   // ---------- desenho do quadro ----------
   render(g, t, opts = {}) {
     if (!this.plan) return;
@@ -616,28 +650,7 @@ export class Office {
     g.drawImage(this.static, 0, 0);
     g.translate(-this.bbox[0], -this.bbox[1]);
 
-    const items = [];
-    const seated = new Map();
-    for (const e of this.entities.values()) if (e.desk && !e.leaving && !e.moving && Math.hypot(e.x - e.seat.x, e.y - e.seat.y) < 0.05) seated.set(e.lr.room.id + ':' + e.desk.x + ':' + e.desk.y, e);
-    for (const lr of this.plan.rooms) {
-      const { ox, oy } = lr;
-      for (const d of lr.desks) {
-        const e = seated.get(lr.room.id + ':' + d.x + ':' + d.y);
-        const x = ox + d.x, y = oy + d.y;
-        items.push({ z: P.depth(x + 1.5, y + 1), f: () => this.drawDesk(g, P, x, y, e, lr, t) });
-        items.push({ z: P.depth(x + 1.5, y + 1.75), f: () => box(g, P, x + 1.05, y + 1.55, 0.9, 0.35, e ? 5 : 6, '#3a3550', '#2a2640', '#221f35') });
-      }
-      if (lr.cc) { items.push({ z: P.depth(ox + 1, oy + 1), f: () => this.drawCommand(g, P, lr, t) }); continue; }
-      const c = lr.coffee, w = lr.cooler;
-      items.push({ z: P.depth(c.x + 0.5, c.y - 0.4), f: () => { box(g, P, c.x - 0.2, c.y - 1.4, 1.4, 0.8, 9, '#6b6f82', '#4a4d5e', '#3c3f4f'); box(g, P, c.x + 0.1, c.y - 1.3, 0.8, 0.5, 6, '#2a2a30', '#d94a4a', '#a53636', 9); } });
-      items.push({ z: P.depth(w.x + 0.5, w.y - 0.4), f: () => { box(g, P, w.x, w.y - 1.2, 0.9, 0.7, 10, '#e9e6d8', '#c9c6b8', '#a9a698'); box(g, P, w.x + 0.15, w.y - 1.1, 0.6, 0.5, 6, '#9fd8ff', '#6cc6ff', '#4aa0d8', 10); } });
-      const px = ox + lr.W - 1.5, py = oy + lr.H - 1.9;
-      items.push({ z: P.depth(px + 0.5, py + 0.5), f: () => { box(g, P, px, py, 0.9, 0.9, 5, '#8a5a3b', '#6b4430', '#57372a'); box(g, P, px - 0.15, py - 0.15, 1.2, 1.2, 8, '#4fae6a', '#3c8a53', '#2f6e42', 5 + Math.sin(t / 900 + ox) * 0.4); box(g, P, px + 0.15, py + 0.15, 0.6, 0.6, 4, '#6fd08a', '#4fae6a', '#3c8a53', 13); } });
-    }
-    for (const lz of this.destinations) for (const pr of lz.props)
-      items.push({ z: P.depth(pr.x + pr.w / 2, pr.y + pr.d), f: () => box(g, P, pr.x, pr.y, pr.w, pr.d, pr.h, pr.col[0], pr.col[1], pr.col[2], pr.z0) });
-    for (const e of this.entities.values()) items.push({ z: P.depth(e.x, e.y) + 0.01, f: () => this.drawChar(g, P, e, t) });
-    if (this.robot) { const r = this.robot; items.push({ z: P.depth(r.x, r.y), f: () => this.drawRobot(g, P, r, t) }); }
+    const items = this.sceneItems(g, P, t);
     items.sort((a, b) => a.z - b.z);
     for (const it of items) it.f();
 
@@ -755,31 +768,15 @@ export class Office {
 
   leisureSpot(e) { return e.away?.phase === 'lá' ? e.away.lz.spots[e.away.spot] : null; }
 
-  drawChar(g, P, e, t) {
+  // pose do personagem neste instante (2D e 3D): quadro do sprite, quanto sobe (lift) e o balanço (bob).
+  // god = Friol na mesa; hide = dentro da cabine; extras = desenha detalhes do tipo (crachá, quepe, prancheta)
+  charPose(e, t) {
     const atSeat = !e.leaving && !e.moving && Math.hypot(e.x - e.seat.x, e.y - e.seat.y) < 0.05;
     const step = Math.floor(t / 150) % 2;
     const sp = !e.moving && this.leisureSpot(e);
     let frame, lift = 0, bob = 0;
-    if (e.fade > 0) g.globalAlpha = clamp(e.fade / 0.6, 0, 1);
-    if (e.kind === 'god') {
-      const [sx, sy] = P.p(e.x, e.y, 0);
-      const fr = Math.floor(t / 2400 + e.phase) % 4 === 0 ? 'HAND_B' : Math.floor(t / 160) % 2 ? 'TYPE_A' : 'TYPE_B';
-      const top = Math.round(sy - 14);
-      g.drawImage(sprite(fr, e.pal, 1), Math.round(sx - 4), top);
-      // auréola
-      g.globalAlpha = 0.75 + Math.sin(t / 400) * 0.25;
-      g.fillStyle = '#ffd166';
-      g.fillRect(Math.round(sx - 3), top - 3, 6, 1); g.fillRect(Math.round(sx - 4), top - 2, 1, 1); g.fillRect(Math.round(sx + 3), top - 2, 1, 1);
-      g.globalAlpha = 1;
-      return;
-    }
-    if (sp?.pose === 'hide') {
-      // dentro da cabine: não aparece, só a luz de "ocupado" na porta
-      const [sx, sy] = P.p(sp.x, sp.y + 1.4, 8);
-      g.fillStyle = '#ff6b5e'; g.fillRect(Math.round(sx) - 1, Math.round(sy), 2, 1);
-      g.globalAlpha = 1;
-      return;
-    }
+    if (e.kind === 'god') return { god: true, frame: Math.floor(t / 2400 + e.phase) % 4 === 0 ? 'HAND_B' : Math.floor(t / 160) % 2 ? 'TYPE_A' : 'TYPE_B' };
+    if (sp?.pose === 'hide') return { hide: true, sp };
     if (sp) {
       const ph = t / 1000 + e.phase;
       if (sp.pose === 'run') { frame = Math.floor(t / 110) % 2 ? 'FRONT_WALK' : 'FRONT'; bob = Math.floor(t / 110) % 2 ? -1 : 0; lift = 1; }
@@ -787,14 +784,7 @@ export class Office {
       else if (sp.pose === 'eat') { frame = Math.floor(ph / 1.3) % 3 === 0 ? 'HAND_B' : 'SIT'; lift = 2; }
       else if (sp.pose === 'sit' || sp.pose === 'sleep') { frame = 'SIT'; lift = 2; }
       else frame = 'BACK'; // pray, play, stand, hide: de costas para o altar/máquina/espelho
-    }
-    if (frame) {
-      const [sx, sy] = P.p(e.x, e.y, 0);
-      g.fillStyle = 'rgba(0,0,0,0.22)';
-      g.fillRect(Math.round(sx - 3), Math.round(sy - 1), 6, 2);
-      g.drawImage(sprite(frame, e.pal, 1), Math.round(sx - 4), Math.round(sy - 12 - lift + bob));
-      g.globalAlpha = 1;
-      return;
+      return { frame, lift, bob, sp };
     }
     if (e.moving) frame = e.facing === 'up' ? (step ? 'BACK_WALK' : 'BACK') : (step ? 'FRONT_WALK' : 'FRONT');
     else if (atSeat && !e.desk) frame = Math.floor(t / 700 + e.phase) % 3 === 0 ? 'HAND_B' : 'FRONT'; // fiscal anotando na prancheta
@@ -802,19 +792,45 @@ export class Office {
     else if (atSeat && e.state === 'working') frame = Math.floor(t / 140 + e.phase) % 2 ? 'TYPE_A' : 'TYPE_B';
     else if (atSeat) frame = 'SIT';
     else frame = Math.floor(t / 900 + e.phase) % 6 === 0 ? 'HAND_B' : 'FRONT'; // conversa no café
-    const [sx, sy] = P.p(e.x, e.y, 0);
     lift = atSeat && e.desk && frame !== 'HAND' && frame !== 'HAND_B' ? 2 : 0;
     bob = e.moving ? (step ? -1 : 0) : 0;
+    return { frame, lift, bob, atSeat, extras: true };
+  }
+
+  drawChar(g, P, e, t) {
+    const pose = this.charPose(e, t);
+    if (e.fade > 0) g.globalAlpha = clamp(e.fade / 0.6, 0, 1);
+    if (pose.god) {
+      const [sx, sy] = P.p(e.x, e.y, 0);
+      const top = Math.round(sy - 14);
+      g.drawImage(sprite(pose.frame, e.pal, 1), Math.round(sx - 4), top);
+      // auréola
+      g.globalAlpha = 0.75 + Math.sin(t / 400) * 0.25;
+      g.fillStyle = '#ffd166';
+      g.fillRect(Math.round(sx - 3), top - 3, 6, 1); g.fillRect(Math.round(sx - 4), top - 2, 1, 1); g.fillRect(Math.round(sx + 3), top - 2, 1, 1);
+      g.globalAlpha = 1;
+      return;
+    }
+    if (pose.hide) {
+      // dentro da cabine: não aparece, só a luz de "ocupado" na porta
+      const [sx, sy] = P.p(pose.sp.x, pose.sp.y + 1.4, 8);
+      g.fillStyle = '#ff6b5e'; g.fillRect(Math.round(sx) - 1, Math.round(sy), 2, 1);
+      g.globalAlpha = 1;
+      return;
+    }
+    const { frame, lift, bob } = pose;
+    const [sx, sy] = P.p(e.x, e.y, 0);
     g.fillStyle = 'rgba(0,0,0,0.22)';
     g.fillRect(Math.round(sx - 3), Math.round(sy - 1), 6, 2);
     g.drawImage(sprite(frame, e.pal, 1), Math.round(sx - 4), Math.round(sy - 12 - lift + bob));
+    if (!pose.extras) { g.globalAlpha = 1; return; }
     if (e.kind === 'intern') { g.fillStyle = '#ffd166'; g.fillRect(Math.round(sx - 1), Math.round(sy - 6 - lift + bob), 2, 1); }
     if (e.kind === 'claude') { g.fillStyle = '#ffd7c2'; g.fillRect(Math.round(sx + 2), Math.round(sy - 12 - lift + bob), 1, 1); }
     if (e.kind === 'codex') {
       const top = Math.round(sy - 12 - lift + bob), lx = Math.round(sx - 4);
       g.fillStyle = '#0b1328'; g.fillRect(lx, top + 1, 9, 1); // aba do quepe
       g.fillStyle = '#ffd166'; g.fillRect(lx + 3, top, 2, 1); // distintivo do quepe
-      if (!e.desk || !atSeat) { g.fillStyle = '#e9dcb8'; g.fillRect(lx + 7, top + 6, 3, 4); g.fillStyle = '#8a6a3b'; g.fillRect(lx + 7, top + 6, 3, 1); } // prancheta
+      if (!e.desk || !pose.atSeat) { g.fillStyle = '#e9dcb8'; g.fillRect(lx + 7, top + 6, 3, 4); g.fillStyle = '#8a6a3b'; g.fillRect(lx + 7, top + 6, 3, 1); } // prancheta
     }
     g.globalAlpha = 1;
   }
@@ -887,13 +903,12 @@ export class Office {
     return { x: sx - this.bbox[0], y: sy - this.bbox[1], w: (lr.W + lr.H) * 8 + 40, h: (lr.W + lr.H) * 4 + 50 };
   }
 
-  // rótulos em resolução de tela; toScreen converte pixel do mundo em pixel da tela
-  labels(g, toScreen, zoom, k, t) {
+  // rótulos em resolução de tela; project(x, y, z) leva o ponto do mundo ao pixel da tela (2D ou 3D)
+  labels(g, project, zoom, k, t) {
     if (!this.plan) return;
-    const P = this.P;
     const placed = [];
     const hits = (r) => placed.some((p) => r.x < p.x + p.w && r.x + r.w > p.x && r.y < p.y + p.h && r.y + r.h > p.y);
-    const at = (x, y, z) => { const [sx, sy] = P.p(x, y, z); return toScreen(sx - this.bbox[0], sy - this.bbox[1]); };
+    const at = project;
     const rooms = [...this.plan.rooms].sort((a, b) => (b.cc - a.cc) || (b.lit - a.lit));
     // salas de nome completo (a igreja) primeiro: o rótulo delas nunca é escondido nem cortado
     const full = this.plan.leisure.filter((l) => l.room.full);

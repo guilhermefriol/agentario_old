@@ -35,9 +35,18 @@ que precisam de você. Com o mouse:
 
 Nada disso envia comandos: o mouse só mexe na câmera local.
 
+### Modo 3D
+
+O botão **3D** no canto do mapa troca o desenho para um prédio em 3D (Three.js), com os mesmos personagens em
+pixel art, cartões, zoom por clique, demonstração e lazer; **2D** volta ao isométrico, que continua sendo o
+padrão. A sala em foco é mantida na troca. No 3D a visão geral gira devagar (±20°), e **botão direito** ou
+**Shift + arrastar** giram a câmera; ao entrar numa sala, as paredes altas das outras baixam. O Three.js só é
+baixado quando o 3D liga (fica em `public/vendor/`, versão fixa, sem CDN). Sem WebGL, ou se o vídeo cair, o
+painel avisa e fica no 2D.
+
 Parâmetros de URL: `tour=0` desliga o passeio da câmera, `rotate=0` para a rotação dos painéis,
-`painel=agora|hoje|equipe` escolhe a aba inicial, `noite=1|0` força o modo noite, `view=topdown` usa a
-projeção de cima em vez da isométrica.
+`painel=agora|hoje|equipe` escolhe a aba inicial, `noite=1|0` força o modo noite, `view=3d` abre no modo 3D,
+`gira=0` desliga o giro da visão geral no 3D e `view=topdown` usa a projeção de cima em vez da isométrica.
 
 ### Na TV (HDMI no Mac)
 
@@ -112,15 +121,15 @@ bin/agentario.mjs    ponto de entrada
 bin/demo.mjs         escritório fictício para demonstração
 src/                 coletor, filtro, snapshot e servidor (Node puro)
 public/              página, planta do prédio, motor gráfico e sprites (Canvas 2D)
-test/                testes (node --test)
+public/view3d.js     modo 3D (Three.js), carregado só quando liga; public/geo3d.js tem as partes puras
+public/vendor/       Three.js 0.186.1 vendorizado (versão, origem e sha256 no README de lá)
+test/                testes (node --test); test/visual/ tem as cenas Playwright do 2D e do 3D
 config/              config local gerada (fora do controle de versão)
 docs/                planos aprovados, pareceres do Codex e cópia da v1
 ```
 
 ## Futuro
 
-O motor separa os dados da projeção e a planta do prédio do desenho. Um visual 3D (Three.js) pode usar o mesmo
-snapshot e a mesma planta sem mexer no coletor.
 Interação com agentes deve ser um serviço separado, com autenticação própria, e nunca neste servidor.
 
 ## Desfazer

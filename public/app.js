@@ -22,6 +22,8 @@ function h(tag, attrs = {}, ...kids) {
 }
 
 const VIEW_TAG = 'clique: entrar na sala · Esc ou duplo clique: visão geral · roda: zoom · arrastar: mover';
+const VIEW_TAG_3D = VIEW_TAG + ' · botão direito ou Shift+arrastar: girar';
+const drawViewTag = () => { $('view-tag').textContent = (v3 ? VIEW_TAG_3D : VIEW_TAG) + (demoOn ? ' · modo demonstração' : ''); };
 let snap = null;
 let lastMsg = 0;
 const office = new Office();
@@ -86,7 +88,7 @@ function setDemo(on) {
   logo.setAttribute('aria-pressed', String(on));
   document.body.classList.toggle('demo', on);
   $('sub').textContent = on ? 'escritório dos agentes · modo demonstração' : 'escritório dos agentes · só visualização';
-  $('view-tag').textContent = VIEW_TAG + (on ? ' · modo demonstração' : '');
+  drawViewTag();
 }
 $('logo').addEventListener('click', () => setDemo(!demoOn));
 setInterval(() => { if (demoOn) refresh(); }, 5000);
@@ -332,10 +334,12 @@ const camera = {
   userUntil: 0, tourIdx: -1, tourAt: 0, focused: null,
   fitZoom() { return Math.min(cw / office.width, ch / office.height) * 0.97; },
   fit(snapNow = false) {
+    if (v3) { v3.fit(); if (snapNow) v3.snap(); return; }
     this.tx = office.width / 2; this.ty = office.height / 2; this.tz = this.fitZoom();
     if (snapNow) { this.x = this.tx; this.y = this.ty; this.zoom = this.tz; }
   },
   focus(lr, fill = 0.9, max = 4) {
+    if (v3) { v3.focus(lr, fill, max); return; }
     const c = office.roomCenter(lr);
     this.tx = c.x; this.ty = c.y;
     this.tz = Math.min(max, Math.max(this.fitZoom() * 1.6, Math.min(cw / c.w, ch / c.h) * fill));
@@ -362,7 +366,7 @@ const camera = {
     if (!lr) { this.overview(); return; }
     backBtn.textContent = backText(lr);
     this.focus(lr, 0.85, lr.cc ? 3.2 : 5);
-    if (snapNow) { this.x = this.tx; this.y = this.ty; this.zoom = this.tz; }
+    if (snapNow) { this.x = this.tx; this.y = this.ty; this.zoom = this.tz; v3?.snap(); }
   },
   refit(snapNow) { if (this.focused) this.keepFocus(snapNow); else this.fit(snapNow); },
   update(dt, now) {
@@ -376,6 +380,7 @@ const camera = {
         if (this.tourIdx < 0 || !stops.length) { this.tourIdx = -1; this.fit(); } else this.focus(stops[this.tourIdx]);
       }
     }
+    if (v3) { v3.update(dt, now, !this.focused && now > this.userUntil); return; }
     const k = Math.min(1, dt * 1.4);
     this.x += (this.tx - this.x) * k; this.y += (this.ty - this.y) * k;
     this.zoom = Math.exp(Math.log(this.zoom) + (Math.log(this.tz) - Math.log(this.zoom)) * k);
@@ -383,6 +388,9 @@ const camera = {
   toScreen(wx, wy) { return [(wx - this.x) * this.zoom + cw / 2, (wy - this.y) * this.zoom + ch / 2]; },
   toWorld(sx, sy) { return [(sx - cw / 2) / this.zoom + this.x, (sy - ch / 2) / this.zoom + this.y]; },
 };
+
+// ponto do mundo (x, y, altura) → pixel da tela no modo 2D
+const project2d = (x, y, z) => { const [sx, sy] = office.P.p(x, y, z); return camera.toScreen(sx - office.bbox[0], sy - office.bbox[1]); };
 
 // ---------- mouse (só câmera e informação) ----------
 let drag = null, cursorTimer = 0;
@@ -394,6 +402,7 @@ document.addEventListener('mousemove', wakeCursor);
 canvas.addEventListener('wheel', (ev) => {
   ev.preventDefault(); pauseTour();
   const [mx, my] = local(ev);
+  if (v3) { v3.wheel(mx, my, ev.deltaY); return; }
   const [wx, wy] = camera.toWorld(mx, my);
   const nz = Math.min(6, Math.max(camera.fitZoom() * 0.8, camera.zoom * Math.exp(-ev.deltaY * 0.0015)));
   camera.zoom = camera.tz = nz;
@@ -402,10 +411,13 @@ canvas.addEventListener('wheel', (ev) => {
 }, { passive: false });
 const backBtn = $('back');
 let clickTimer = 0;
+// o que está sob o mouse (pixel do dispositivo), no 2D ou no 3D
+const hitAt = (mx, my) => (v3 ? v3.hitTest(mx, my) : office.hitTest(...camera.toWorld(mx, my)));
+canvas.addEventListener('contextmenu', (ev) => { if (v3) ev.preventDefault(); });
 canvas.addEventListener('mousedown', (ev) => {
-  if (ev.button !== 0) return;
+  if (ev.button !== 0 && !(v3 && ev.button === 2)) return;
   const [mx, my] = local(ev);
-  drag = { mx, my, x: camera.x, y: camera.y, cx: ev.clientX, cy: ev.clientY, moved: 0, at: performance.now() };
+  drag = { mx, my, lx: mx, ly: my, x: camera.x, y: camera.y, cx: ev.clientX, cy: ev.clientY, moved: 0, at: performance.now(), rot: !!v3 && (ev.button === 2 || ev.shiftKey) };
   canvas.classList.add('grab'); pauseTour();
 });
 window.addEventListener('mouseup', (ev) => {
@@ -413,8 +425,7 @@ window.addEventListener('mouseup', (ev) => {
   drag = null; canvas.classList.remove('grab');
   // clique = botão esquerdo, quase parado durante todo o gesto, rápido e solto sobre o canvas
   if (!d || ev.button !== 0 || ev.target !== canvas || d.moved >= 6 || performance.now() - d.at > 400) return;
-  const [wx, wy] = camera.toWorld(...local(ev));
-  const hit = office.hitTest(wx, wy);
+  const hit = hitAt(...local(ev));
   const lr = hit?.type === 'room' ? hit.lr : hit?.e?.lr;
   if (!lr || lr.room.id === camera.focused) return;
   clearTimeout(clickTimer);
@@ -428,11 +439,13 @@ canvas.addEventListener('mousemove', (ev) => {
   const [mx, my] = local(ev);
   if (drag) {
     drag.moved = Math.max(drag.moved, Math.hypot(ev.clientX - drag.cx, ev.clientY - drag.cy));
-    camera.x = camera.tx = drag.x - (mx - drag.mx) / camera.zoom;
-    camera.y = camera.ty = drag.y - (my - drag.my) / camera.zoom;
+    if (v3) { if (drag.rot) v3.rotate(mx - drag.lx, my - drag.ly); else v3.pan(mx - drag.lx, my - drag.ly); drag.lx = mx; drag.ly = my; }
+    else {
+      camera.x = camera.tx = drag.x - (mx - drag.mx) / camera.zoom;
+      camera.y = camera.ty = drag.y - (my - drag.my) / camera.zoom;
+    }
   }
-  const [wx, wy] = camera.toWorld(mx, my);
-  const hit = office.hitTest(wx, wy);
+  const hit = hitAt(mx, my);
   office.hoverKey = hit?.type === 'agent' ? hit.key : null;
   if (!hit) { tip.hidden = true; return; }
   tip.replaceChildren(...(hit.type === 'agent' ? agentTip(hit.e) : roomTip(hit.lr)));
@@ -463,6 +476,42 @@ setInterval(() => {
 }, 1000);
 setInterval(() => { if (snap) drawPane(); }, 15000);
 
+// ---------- modo 3D (botão; carrega o Three.js só quando liga) ----------
+let v3 = null, v3Plan = '', want3d = false, viewToken = 0, msgTimer = 0;
+const viewBtn = $('view-btn');
+function viewMsg(text) {
+  const el = $('view-msg');
+  el.textContent = text; el.hidden = false;
+  clearTimeout(msgTimer); msgTimer = setTimeout(() => { el.hidden = true; }, 6000);
+}
+function viewUI() {
+  viewBtn.textContent = v3 ? '2D' : '3D';
+  viewBtn.setAttribute('aria-pressed', String(!!v3));
+  viewBtn.setAttribute('aria-label', v3 ? 'Voltar ao isométrico' : 'Ver em 3D');
+  drawViewTag();
+}
+function drop3d() {
+  if (!v3) return;
+  v3.dispose(); v3 = null; v3Plan = '';
+  cw = 0; // o próximo quadro reenquadra a câmera 2D
+}
+async function setView3d(on) {
+  const my = ++viewToken;
+  want3d = on;
+  if (!on) { drop3d(); viewUI(); return; }
+  if (v3) return;
+  let mod;
+  try { mod = await import('./view3d.js'); } catch { if (my === viewToken) { want3d = false; viewMsg('3D indisponível agora; ficando no 2D'); viewUI(); } return; }
+  if (my !== viewToken || v3) return; // outro clique mudou de ideia enquanto carregava
+  try {
+    v3 = mod.createView3d({ office, host: $('office'), before: canvas, spin: params.get('gira') !== '0',
+      onLost: () => { want3d = false; drop3d(); viewUI(); viewMsg('o 3D parou (vídeo indisponível); voltando ao 2D'); } });
+  } catch { want3d = false; viewMsg('este navegador não tem WebGL; ficando no 2D'); viewUI(); return; }
+  cw = 0; // força resize + reenquadrar (mantém a sala em foco)
+  viewUI();
+}
+viewBtn.addEventListener('click', () => setView3d(!want3d));
+
 // ---------- loop ----------
 let last = null, cw = 0, ch = 0, acc = 0;
 function frame(t) {
@@ -476,21 +525,33 @@ function frame(t) {
   if (!snap || !office.plan) return;
   const rect = canvas.getBoundingClientRect();
   const W = Math.round(rect.width * dpr()), H = Math.round(rect.height * dpr());
-  if (W !== cw || H !== ch) { const firstSize = !cw; cw = W; ch = H; canvas.width = W; canvas.height = H; camera.refit(firstSize); }
-  if (lo.width !== office.width || lo.height !== office.height) { lo.width = office.width; lo.height = office.height; camera.refit(true); }
+  if (W !== cw || H !== ch) { const firstSize = !cw; cw = W; ch = H; canvas.width = W; canvas.height = H; v3?.resize(W, H); camera.refit(firstSize); }
+  if (v3) { if (v3Plan !== office.planKey) { v3Plan = office.planKey; camera.refit(true); } }
+  else if (lo.width !== office.width || lo.height !== office.height) { lo.width = office.width; lo.height = office.height; camera.refit(true); }
   office.step(step, t);
   camera.update(step, t);
   const t0 = performance.now();
+  if (v3) {
+    v3.render(t, nightFactor());
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, W, H);
+    office.labels(g, v3.project, v3.zoomEff(), Math.max(1, H / 860), t);
+    window.__frameMs = performance.now() - t0;
+    return;
+  }
   office.render(lg, t, { nightK: nightFactor() });
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.clearRect(0, 0, W, H);
   g.imageSmoothingEnabled = camera.zoom < 1.6;
   g.drawImage(lo, cw / 2 - camera.x * camera.zoom, ch / 2 - camera.y * camera.zoom, lo.width * camera.zoom, lo.height * camera.zoom);
-  office.labels(g, (x, y) => camera.toScreen(x, y), camera.zoom, Math.max(1, H / 860), t);
+  office.labels(g, project2d, camera.zoom, Math.max(1, H / 860), t);
   window.__frameMs = performance.now() - t0;
 }
 requestAnimationFrame(frame);
-$('view-tag').textContent = VIEW_TAG;
+drawViewTag();
 if (demoOn) setDemo(true);
+if (viewMode === '3d') setView3d(true);
 // gancho de depuração só leitura, para testes automatizados (?debug=1)
-if (params.get('debug') === '1') window.__pr = { office, camera, view, real: () => snap, feeds, feedOf, screenOf: (key) => { const e = office.entities.get(key); if (!e) return null; const [sx, sy] = office.P.p(e.x, e.y, 0); const [x, y] = camera.toScreen(sx - office.bbox[0], sy - office.bbox[1]); return [x / (window.devicePixelRatio || 1), y / (window.devicePixelRatio || 1)]; } };
+if (params.get('debug') === '1') window.__pr = { office, camera, view, real: () => snap, feeds, feedOf,
+  viewMode: () => (v3 ? '3d' : 'iso'), view3d: () => (v3 ? { ready: v3.ready, frames: v3.frames, info: v3.info() } : null),
+  screenOf: (key) => { const e = office.entities.get(key); if (!e) return null; const [x, y] = (v3 ? v3.project : project2d)(e.x, e.y, 0); return [x / (window.devicePixelRatio || 1), y / (window.devicePixelRatio || 1)]; } };

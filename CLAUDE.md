@@ -14,15 +14,19 @@ HTTP 200, volta sozinho após `kill`. **Não iniciar com `npm start` à mão** (
   `config/local.json.pre-v6` (a sala `pixel_room` virou `agentario` no `config/local.json`).
 - Autorizados pelo dono (fora de `~/.claude`): esse plist e `~/Library/Logs/agentario/`.
 
-## Depois: v7 (3D) e v8 (interação) — cada um com plano + Codex + aprovação
-- **v7 — 3D**: decisão do dono = **modo extra com botão** (isométrico continua padrão; `?view=3d`), Three.js
-  sobre a mesma planta/snapshot; cartão, zoom por clique, demonstração e lazer nos dois modos.
-  Three.js vendorizado em `public/vendor/` com versão exata (sem CDN). Cenas novas no teste visual.
-- **v8 — interação**: o dono quer **responder perguntas, mandar tarefa nova e parar sessão** pela TV.
+## Próximo: v8 (interação) — plano + Codex + aprovação
+- O dono quer **responder perguntas, mandar tarefa nova e parar sessão** pela TV.
   Serviço separado com autenticação; o servidor do painel continua só leitura. Ver
   `docs/PESQUISA-interacao.md` (o que é e o que não é possível com sessões abertas no terminal).
 
 ## Estado em 2026-10-17
+- v7 aplicada (docs/PLANO-v7.md + pareceres): **modo 3D** com botão (`#view-btn`; `?view=3d`; `?gira=0`),
+  isométrico segue padrão. `public/view3d.js` (Three.js 0.186.1 em `public/vendor/`, só carregado no 3D)
+  reaproveita as rotinas de desenho do `office.js` via coletor (`public/geo3d.js`: polígonos do 2D viram
+  triângulos com as mesmas cores; decalques coplanares afastados por camada). Personagens = planos de pé com o
+  mesmo pixel art (`charPose` compartilhada). Rótulos = mesmo `labels()` com `project` da vista. Em foco, as
+  paredes altas das outras salas baixam (shader). Perda de contexto/WebGL ausente → volta ao 2D com aviso.
+  Medido em 4K + demonstração (94 pessoas, GPU do Mac): ~5 ms de JS por quadro, intervalo p95 ~8 ms.
 - v6 parte 1 aplicada (docs/PLANO-v6.md + pareceres): git + GitHub privado (hook pre-commit com gitleaks em
   `.git/hooks/pre-commit`, nunca `--no-verify`); painel sem "centro de comando"; dois letreiros (real
   sempre comparado com o real, demo com a cena); salas sem agente agrupadas numa ala sul contígua;
@@ -35,8 +39,9 @@ HTTP 200, volta sozinho após `kill`. **Não iniciar com `npm start` à mão** (
 - v4: salas de lazer (Academia, Banheiros, Refeitório, Sala de descanso, Igreja); parados "matam o tempo"
   (≤35% fora, troca a cada 4 min) e voltam pelo próprio rastro quando recebem trabalho.
 - v3: cartão do agente com "Faz:"; clique na sala dá zoom (botão/Esc/duplo clique voltam).
-- Testes: `npm test` (63, node --test) e `npm run visual` (7 cenas Playwright; `npm run visual:update`
-  regrava **todas** — revisar as imagens antes de commitar). Demo fictícia: `npm run demo` (porta 4748).
+- Testes: `npm test` (72, node --test) e `npm run visual` (projetos `2d` = 7 cenas e `3d` = 5 cenas +
+  6 funcionais com SwiftShader; `npm run visual:update` regrava **todas** — revisar as imagens antes de
+  commitar; para gravar só cenas novas use `--update-snapshots=missing`). Demo fictícia: `npm run demo` (porta 4748).
 - Planos e pareceres do Codex em `docs/`. Backups antigos `docs/v*-backup/` ficam fora do git
   (o git é o ponto de restauração daqui em diante).
 
@@ -61,7 +66,7 @@ HTTP 200, volta sozinho após `kill`. **Não iniciar com `npm start` à mão** (
   (aiTitle ou description de delegação, só em sala "publico", sempre `redact()`) e `roleText()`
   (1ª frase da description do agente, redigida antes do corte, ≤120; description em bloco é ignorada).
 - Só `src/config.mjs` escreve em disco, só em `config/` (teste garante). Servidor: GET/HEAD, Host/Origin
-  estritos, CSP, no-store. Sem CDN; fontes em `public/fonts/`. Runtime sem dependências
+  estritos, CSP, no-store. Sem CDN; fontes em `public/fonts/`; Three.js vendorizado com sha256 em `public/vendor/README.md`. Runtime sem dependências
   (`@playwright/test` é só devDependency de teste).
 - `config/local.json` (lista real de projetos) nunca vai para o git.
 - Mudança substantiva segue o gate global: plano → Codex read-only via stdin → aprovação do dono.
@@ -70,5 +75,6 @@ HTTP 200, volta sozinho após `kill`. **Não iniciar com `npm start` à mão** (
 - `src/` coletor, filtro, snapshot, servidor (Node puro)
 - `public/demo.js` modo demonstração · `public/leisure.js` lazer e centro (puro, testado no node)
 - `public/building.js` planta, ala e corredores · `public/office.js` motor · `public/app.js` câmera, mouse, painéis
+- `public/view3d.js` cena 3D · `public/geo3d.js` coletor/câmera (puro, testado no node) · `public/vendor/` Three.js
 - `bin/agentario.mjs` entrada · `bin/demo.mjs` demo · `test/` node --test · `test/visual/` Playwright
 - `?debug=1` expõe `window.__pr` (só leitura) para testes.

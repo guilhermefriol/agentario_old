@@ -1,0 +1,15 @@
+**Bloqueadores:** nenhum estrutural. Os ajustes cobrem os principais problemas do parecer anterior.
+
+**Riscos:**
+
+- DPR real e `pixelRatio ≤ 1.5` são escalas diferentes: projeção, overlay e hit-test precisam converter explicitamente entre elas.
+- Contador de objetos estável não comprova ausência de vazamento de GPU; acompanhar também geometrias/texturas do renderer e memória após aquecimento.
+- SwiftShader melhora a repetibilidade, mas a aprovação de desempenho continua dependendo da TV real.
+
+**Simplificações:**
+
+- Para esconder paredes, usar `visible = false`: opacidade zero pode continuar escrevendo profundidade, dependendo do material. A normal indica orientação, mas sozinha não comprova obstrução do alvo. [Documentação Three.js](https://threejs.org/docs/pages/Material.html)
+- Remover dos testes a escolha de salas com luz pontual, adiada pelo próprio plano.
+- Definir `ready` por ativação, evitando que uma promessa já resolvida valide uma reentrada antes do novo quadro.
+
+**Veredito: aprovar**, incorporando esses ajustes pontuais na implementação.
